@@ -6,8 +6,8 @@ import torch
 import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
-from dataset import ShapeNetDataset, ModelNetDataset, ModelNet40
-from model import PointNetCls, feature_transform_regularizer
+from pointnet.dataset import ShapeNetDataset, ModelNetDataset, ModelNet40
+from pointnet.model import PointNetCls, feature_transform_regularizer
 import torch.nn.functional as F
 from tqdm import tqdm
 import sys
@@ -117,6 +117,7 @@ if __name__ == '__main__':
     for epoch in range(opt.nepoch):
         scheduler.step()
         n = len(dataloader)
+        pbar = tqdm(total=n , desc = f'Epoch: {epoch}   ')
         for i, data in enumerate(dataloader, 0):
             points, target = data
             target = target[:, 0]
@@ -135,10 +136,11 @@ if __name__ == '__main__':
             if not opt.progress:
                 print('[%d: %d/%d] train loss: %f accuracy: %f' % (epoch, i, num_batch, loss.item(), correct.item() / float(opt.batchSize)))
             else:
-                sys.stdout.write('\r')
-                sys.stdout.write("[%-100s] %d%% ,  train loss: %f accuracy: %f" % ('='*(int(i/n * 100)), i/n * 100, loss.item(), correct.item() / float(opt.batchSize)))
-                sys.stdout.flush()
-
+                # sys.stdout.write('\r')
+                # sys.stdout.write("[%-100s] %d%% ,  train loss: %f accuracy: %f" % ('='*(int(i/n * 100)), i/n * 100, loss.item(), correct.item() / float(opt.batchSize)))
+                # sys.stdout.flush()
+                pbar.update(1)
+                pbar.postfix = f'loss: {round(loss.item(), 2)}, acc: { round(correct.item() / float(opt.batchSize), 2)}'
 
             if (i % 10 == 0 and not opt.progress):
                 j, data = next(enumerate(testdataloader, 0))
@@ -151,7 +153,9 @@ if __name__ == '__main__':
                 loss = F.nll_loss(pred, target)
                 pred_choice = pred.data.max(1)[1]
                 correct = pred_choice.eq(target.data).cpu().sum()
-                print('[%d: %d/%d] %s loss: %f accuracy: %f' % (epoch, i, num_batch, blue('test'), loss.item(), correct.item()/float(opt.batchSize)))
+                print('Epoch: %d   %s loss: %f accuracy: %f' % (epoch, blue('test'), loss.item(), correct.item()/float(opt.batchSize)))
+
+        pbar.close()
 
         if opt.progress:
             j, data = next(enumerate(testdataloader, 0))
@@ -164,7 +168,7 @@ if __name__ == '__main__':
             loss = F.nll_loss(pred, target)
             pred_choice = pred.data.max(1)[1]
             correct = pred_choice.eq(target.data).cpu().sum()
-            print('\n[%d: %d/%d] %s loss: %f accuracy: %f' % (epoch, i, num_batch, blue('test'), loss.item(), correct.item()/float(opt.batchSize)))
+            print('[%d: %d/%d] %s loss: %f accuracy: %f\n' % (epoch, i, num_batch, blue('test'), loss.item(), correct.item()/float(opt.batchSize)))
 
         torch.save(classifier.state_dict(), '%s/cls_model_%d.pth' % (opt.outf, epoch))
 

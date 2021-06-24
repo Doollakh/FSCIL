@@ -8,6 +8,9 @@ import sys
 from tqdm import tqdm 
 import json
 from plyfile import PlyData, PlyElement
+import glob
+import h5py
+
 
 def get_segmentation_classes(root):
     catfile = os.path.join(root, 'synsetoffset2category.txt')
@@ -156,7 +159,7 @@ class ModelNetDataset(data.Dataset):
                 self.fns.append(line.strip())
 
         self.cat = {}
-        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../misc/modelnet_id.txt'), 'r') as f:
+        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '/misc/modelnet_id.txt'), 'r') as f:
             for line in f:
                 ls = line.strip().split()
                 self.cat[ls[0]] = int(ls[1])
@@ -190,6 +193,77 @@ class ModelNetDataset(data.Dataset):
 
     def __len__(self):
         return len(self.fns)
+
+
+
+def translate_pointcloud(pointcloud):
+    xyz1 = np.random.uniform(low=2./3., high=3./2., size=[3])
+    xyz2 = np.random.uniform(low=-0.2, high=0.2, size=[3])
+       
+    translated_pointcloud = np.add(np.multiply(pointcloud, xyz1), xyz2).astype('float32')
+    return translated_pointcloud
+
+
+
+def download(root):
+    BASE_DIR = os.path.dirname(root)
+    DATA_DIR = os.path.join(root, 'data')
+    if not os.path.exists(DATA_DIR):
+        os.mkdir(DATA_DIR)
+    if not os.path.exists(os.path.join(DATA_DIR, 'modelnet40_ply_hdf5_2048')):
+        www = 'https://shapenet.cs.stanford.edu/media/modelnet40_ply_hdf5_2048.zip'
+        zipfile = os.path.basename(www)
+        os.system('wget %s; unzip %s' % (www, zipfile))
+        os.system('mv %s %s' % (zipfile[:-4], DATA_DIR))
+        os.system('rm %s' % (zipfile))
+
+
+def load_data(root, partition):
+    download(root)
+    BASE_DIR = os.path.dirname(root)
+    DATA_DIR = os.path.join(root, 'data')
+    all_data = []
+    all_label = []
+    for h5_name in glob.glob(os.path.join(DATA_DIR, 'modelnet40_ply_hdf5_2048', 'ply_data_%s*.h5'%partition)):
+        f = h5py.File(h5_name)
+        data = f['data'][:].astype('float32')
+        label = f['label'][:].astype('int64')
+        f.close()
+        all_data.append(data)
+        all_label.append(label)
+    all_data = np.concatenate(all_data, axis=0)
+    all_label = np.concatenate(all_label, axis=0)
+    return all_data, all_label
+
+
+class ModelNet40(data.Dataset):
+    def __init__(self, root, num_points, partition='train'):
+        self.data, self.label = load_data(root, partition)
+        self.num_points = num_points
+        self.partition = partition
+
+        self.cat = {}
+        with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../misc/modelnet_id.txt'), 'r') as f:
+            for line in f:
+                ls = line.strip().split()
+                self.cat[ls[0]] = int(ls[1])
+
+        print(self.cat)
+        self.classes = list(self.cat.keys())
+        
+
+    def __getitem__(self, item):
+        pointcloud = self.data[item][:self.num_points]
+        label = self.label[item]
+        if self.partition == 'train':
+            pointcloud = translate_pointcloud(pointcloud)
+            np.random.shuffle(pointcloud)
+        return pointcloud, label
+
+    def __len__(self):
+        return self.data.shape[0]
+
+
 
 if __name__ == '__main__':
     dataset = sys.argv[1]
