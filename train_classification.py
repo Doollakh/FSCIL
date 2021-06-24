@@ -10,6 +10,7 @@ from pointnet.dataset import ShapeNetDataset, ModelNetDataset, ModelNet40
 from pointnet.model import PointNetCls, feature_transform_regularizer
 import torch.nn.functional as F
 from tqdm import tqdm
+from tqdm.notebook import tqdm_notebook
 import sys
 
 
@@ -117,7 +118,7 @@ if __name__ == '__main__':
     for epoch in range(opt.nepoch):
         scheduler.step()
         n = len(dataloader)
-        pbar = tqdm(total=n , desc = f'Epoch: {epoch}   ')
+        pbar = tqdm_notebook(total=n , desc = f'Epoch: {epoch}   ')
         for i, data in enumerate(dataloader, 0):
             points, target = data
             target = target[:, 0]
