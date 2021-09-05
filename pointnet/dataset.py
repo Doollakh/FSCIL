@@ -5,7 +5,7 @@ import os.path
 import torch
 import numpy as np
 import sys
-from tqdm import tqdm 
+from tqdm import tqdm
 import json
 from plyfile import PlyData, PlyElement
 import glob
@@ -30,8 +30,10 @@ def get_segmentation_classes(root):
         for fn in fns:
             token = (os.path.splitext(os.path.basename(fn))[0])
             meta[item].append((os.path.join(dir_point, token + '.pts'), os.path.join(dir_seg, token + '.seg')))
-    
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'C:/Users/Sajjad/Documents/py/Untitled Folder 1/pointnet.pytorch/misc/num_seg_classes.txt'), 'w') as f:
+
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                           'C:/Users/Sajjad/Documents/py/Untitled Folder 1/pointnet.pytorch/misc/num_seg_classes.txt'),
+              'w') as f:
         for item in cat:
             datapath = []
             num_seg_classes = 0
@@ -46,15 +48,19 @@ def get_segmentation_classes(root):
             print("category {} num segmentation classes {}".format(item, num_seg_classes))
             f.write("{}\t{}\n".format(item, num_seg_classes))
 
+
 def gen_modelnet_id(root):
     classes = []
     with open(os.path.join(root, 'train.txt'), 'r') as f:
         for line in f:
             classes.append(line.strip().split('/')[0])
     classes = np.unique(classes)
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'C:/Users/Sajjad/Documents/py/Untitled Folder 1/pointnet.pytorch/misc/modelnet_id.txt'), 'w') as f:
+    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                           'C:/Users/Sajjad/Documents/py/Untitled Folder 1/pointnet.pytorch/misc/modelnet_id.txt'),
+              'w') as f:
         for i in range(len(classes)):
             f.write('{}\t{}\n'.format(classes[i], i))
+
 
 class ShapeNetDataset(data.Dataset):
     def __init__(self,
@@ -63,7 +69,7 @@ class ShapeNetDataset(data.Dataset):
                  classification=False,
                  class_choice=None,
                  split='train',
-                 data_augmentation=True):
+                 data_augmentation=True, num_class=None):
         self.npoints = npoints
         self.root = root
         self.catfile = os.path.join(self.root, 'synsetoffset2category.txt')
@@ -71,12 +77,12 @@ class ShapeNetDataset(data.Dataset):
         self.data_augmentation = data_augmentation
         self.classification = classification
         self.seg_classes = {}
-        
+
         with open(self.catfile, 'r') as f:
             for line in f:
                 ls = line.strip().split()
                 self.cat[ls[0]] = ls[1]
-        #print(self.cat)
+        # print(self.cat)
         if not class_choice is None:
             self.cat = {k: v for k, v in self.cat.items() if k in class_choice}
 
@@ -84,7 +90,7 @@ class ShapeNetDataset(data.Dataset):
 
         self.meta = {}
         splitfile = os.path.join(self.root, 'train_test_split', 'shuffled_{}_file_list.json'.format(split))
-        #from IPython import embed; embed()
+        # from IPython import embed; embed()
         filelist = json.load(open(splitfile, 'r'))
         for item in self.cat:
             self.meta[item] = []
@@ -92,8 +98,9 @@ class ShapeNetDataset(data.Dataset):
         for file in filelist:
             _, category, uuid = file.split('/')
             if category in self.cat.values():
-                self.meta[self.id2cat[category]].append((os.path.join(self.root, category, 'points', uuid+'.pts'),
-                                        os.path.join(self.root, category, 'points_label', uuid+'.seg')))
+                self.meta[self.id2cat[category]].append((os.path.join(self.root, category, 'points', uuid + '.pts'),
+                                                         os.path.join(self.root, category, 'points_label',
+                                                                      uuid + '.seg')))
 
         self.datapath = []
         for item in self.cat:
@@ -114,21 +121,21 @@ class ShapeNetDataset(data.Dataset):
         cls = self.classes[self.datapath[index][0]]
         point_set = np.loadtxt(fn[1]).astype(np.float32)
         seg = np.loadtxt(fn[2]).astype(np.int64)
-        #print(point_set.shape, seg.shape)
+        # print(point_set.shape, seg.shape)
 
         choice = np.random.choice(len(seg), self.npoints, replace=True)
-        #resample
+        # resample
         point_set = point_set[choice, :]
 
-        point_set = point_set - np.expand_dims(np.mean(point_set, axis = 0), 0) # center
-        dist = np.max(np.sqrt(np.sum(point_set ** 2, axis = 1)),0)
-        point_set = point_set / dist #scale
+        point_set = point_set - np.expand_dims(np.mean(point_set, axis=0), 0)  # center
+        dist = np.max(np.sqrt(np.sum(point_set ** 2, axis=1)), 0)
+        point_set = point_set / dist  # scale
 
         if self.data_augmentation:
-            theta = np.random.uniform(0,np.pi*2)
-            rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)],[np.sin(theta), np.cos(theta)]])
-            point_set[:,[0,2]] = point_set[:,[0,2]].dot(rotation_matrix) # random rotation
-            point_set += np.random.normal(0, 0.02, size=point_set.shape) # random jitter
+            theta = np.random.uniform(0, np.pi * 2)
+            rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
+            point_set[:, [0, 2]] = point_set[:, [0, 2]].dot(rotation_matrix)  # random rotation
+            point_set += np.random.normal(0, 0.02, size=point_set.shape)  # random jitter
 
         seg = seg[choice]
         point_set = torch.from_numpy(point_set)
@@ -143,12 +150,13 @@ class ShapeNetDataset(data.Dataset):
     def __len__(self):
         return len(self.datapath)
 
+
 class ModelNetDataset(data.Dataset):
     def __init__(self,
                  root,
                  npoints=2500,
                  split='train',
-                 data_augmentation=True):
+                 data_augmentation=True, num_class=None):
         self.npoints = npoints
         self.root = root
         self.split = split
@@ -190,19 +198,16 @@ class ModelNetDataset(data.Dataset):
         cls = torch.from_numpy(np.array([cls]).astype(np.int64))
         return point_set, cls
 
-
     def __len__(self):
         return len(self.fns)
 
 
-
 def translate_pointcloud(pointcloud):
-    xyz1 = np.random.uniform(low=2./3., high=3./2., size=[3])
+    xyz1 = np.random.uniform(low=2. / 3., high=3. / 2., size=[3])
     xyz2 = np.random.uniform(low=-0.2, high=0.2, size=[3])
-       
+
     translated_pointcloud = np.add(np.multiply(pointcloud, xyz1), xyz2).astype('float32')
     return translated_pointcloud
-
 
 
 def download(root):
@@ -224,23 +229,27 @@ def load_data(root, partition):
     DATA_DIR = os.path.join(root, 'data')
     all_data = []
     all_label = []
-    for h5_name in glob.glob(os.path.join(DATA_DIR, 'modelnet40_ply_hdf5_2048', 'ply_data_%s*.h5'%partition)):
+    for h5_name in glob.glob(os.path.join(DATA_DIR, 'modelnet40_ply_hdf5_2048', 'ply_data_%s*.h5' % partition)):
         f = h5py.File(h5_name)
         data = f['data'][:].astype('float32')
         label = f['label'][:].astype('int64')
         f.close()
         all_data.append(data)
         all_label.append(label)
+        # print(all_data)
     all_data = np.concatenate(all_data, axis=0)
     all_label = np.concatenate(all_label, axis=0)
     return all_data, all_label
 
 
 class ModelNet40(data.Dataset):
-    def __init__(self, root, num_points, partition='train'):
+    def __init__(self, root, num_points, partition='train', num_class=None):
         self.data, self.label = load_data(root, partition)
         self.num_points = num_points
         self.partition = partition
+
+        if num_class is not None:
+            print(self.label)
 
         self.cat = {}
         with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../misc/modelnet_id.txt'), 'r') as f:
@@ -248,9 +257,9 @@ class ModelNet40(data.Dataset):
                 ls = line.strip().split()
                 self.cat[ls[0]] = int(ls[1])
 
-        print(self.cat)
+        if partition == 'train':
+            print(f'categories: ', self.cat)
         self.classes = list(self.cat.keys())
-        
 
     def __getitem__(self, item):
         pointcloud = self.data[item][:self.num_points]
@@ -264,21 +273,20 @@ class ModelNet40(data.Dataset):
         return self.data.shape[0]
 
 
-
 if __name__ == '__main__':
     dataset = sys.argv[1]
     datapath = sys.argv[2]
 
     if dataset == 'shapenet':
-        d = ShapeNetDataset(root = datapath, class_choice = ['Chair'])
+        d = ShapeNetDataset(root=datapath, class_choice=['Chair'])
         print(len(d))
         ps, seg = d[0]
-        print(ps.size(), ps.type(), seg.size(),seg.type())
+        print(ps.size(), ps.type(), seg.size(), seg.type())
 
-        d = ShapeNetDataset(root = datapath, classification = True)
+        d = ShapeNetDataset(root=datapath, classification=True)
         print(len(d))
         ps, cls = d[0]
-        print(ps.size(), ps.type(), cls.size(),cls.type())
+        print(ps.size(), ps.type(), cls.size(), cls.type())
         # get_segmentation_classes(datapath)
 
     if dataset == 'modelnet':
@@ -286,4 +294,3 @@ if __name__ == '__main__':
         d = ModelNetDataset(root=datapath)
         print(len(d))
         print(d[0])
-
