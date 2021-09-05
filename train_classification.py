@@ -65,10 +65,6 @@ def training(opt, n_class=None, flag=False):
         shuffle=False,
         num_workers=int(opt.workers))
 
-    print(len(dataset), len(test_dataset))
-    num_classes = len(dataset.classes)
-    print('classes', num_classes)
-
     try:
         os.makedirs(opt.outf)
     except OSError:
@@ -85,6 +81,10 @@ def training(opt, n_class=None, flag=False):
 
     if flag:
         print(str(classifier))
+
+    print(len(dataset), len(test_dataset))
+    num_classes = len(dataset.classes)
+    print('classes', num_classes)
 
     num_batch = len(dataset) / opt.batchSize
 
