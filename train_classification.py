@@ -17,9 +17,17 @@ import numpy as np
 # learning_type = simple, joint
 # forgetting
 
+# 20, 25, 30, 35, 40
+# 20, 5,  5,  5,  5
+def rand_choice(choices, size, count):
+    r = np.arange(size)
+    r = np.delete(r, choices)
+    temp = np.random.choice(len(r), size=count, replace=False)
+    return r[temp]
+
 
 # noinspection PyUnboundLocalVariable
-def training(opt, n_class=None, flag=False):
+def training(opt, n_class=None, flag=False, classes=None):
     if opt.dataset_type == 'shapenet':
         dataset = ShapeNetDataset(
             root=opt.dataset,
@@ -46,12 +54,30 @@ def training(opt, n_class=None, flag=False):
                 data_augmentation=False, num_class=n_class)
 
         else:
-            dataset = ModelNet40(root=opt.dataset, partition='train', num_points=opt.num_points, num_class=n_class)
+            dataset = ModelNet40(root=opt.dataset, partition='train', num_points=opt.num_points)
 
-            test_dataset = ModelNet40(root=opt.dataset, partition='test', num_points=opt.num_points, num_class=n_class)
+            test_dataset = ModelNet40(root=opt.dataset, partition='test', num_points=opt.num_points)
 
     else:
         exit('wrong dataset type')
+
+    num_classes = len(dataset.classes)
+
+    if flag:
+        temp = rand_choice(classes, 40, n_class)
+        classes = np.concatenate((classes, temp))
+        dataset.filter(classes=classes)
+        test_dataset.filter(classes=classes)
+    else:
+        temp = rand_choice(classes, 40, opt.step_num_class)
+        classes = np.concatenate((classes, temp))
+        if opt.learning_type == 'forgetting':
+            c = n_class - opt.step_num_class
+            dataset.filter(classes[c:-1])
+            test_dataset.filter(classes[0:20])
+        else:
+            dataset.filter(classes)
+            test_dataset.filter(classes)
 
     dataloader = torch.utils.data.DataLoader(
         dataset,
@@ -82,14 +108,16 @@ def training(opt, n_class=None, flag=False):
     if flag:
         print(str(classifier))
 
-    print(len(dataset), len(test_dataset))
     num_classes = len(dataset.classes)
+    print(len(dataset), len(test_dataset))
     print('classes', num_classes)
 
     num_batch = len(dataset) / opt.batchSize
 
     blue = lambda x: '\033[94m' + x + '\033[0m'
 
+    test_acc = np.zeros(opt.nepoch)
+    test_loss = np.zeros(opt.nepoch)
     for epoch in range(opt.nepoch):
         scheduler.step()
         n = len(dataloader)
@@ -115,29 +143,31 @@ def training(opt, n_class=None, flag=False):
 
         pbar.close()
 
-        if opt.progress:
-            total_loss = 0
-            total_correct = 0
-            total_testset = 0
-            for i, data in tqdm(enumerate(testdataloader, 0)):
-                points, target = data
-                target = target[:, 0]
-                points = points.transpose(2, 1)
-                points, target = points.cuda(), target.cuda()
-                classifier = classifier.eval()
-                pred, _, _ = classifier(points)
-                pred_choice = pred.data.max(1)[1]
-                correct = pred_choice.eq(target.data).cpu().sum()
-                loss = F.nll_loss(pred, target)
-                total_loss += loss.item()
-                total_correct += correct.item()
-                total_testset += points.size()[0]
-            print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
-                epoch, blue('test'), total_correct / float(total_testset), total_loss / float(total_testset)))
+        total_loss = 0
+        total_correct = 0
+        total_testset = 0
+        for i, data in tqdm(enumerate(testdataloader, 0)):
+            points, target = data
+            target = target[:, 0]
+            points = points.transpose(2, 1)
+            points, target = points.cuda(), target.cuda()
+            classifier = classifier.eval()
+            pred, _, _ = classifier(points)
+            pred_choice = pred.data.max(1)[1]
+            correct = pred_choice.eq(target.data).cpu().sum()
+            loss = F.nll_loss(pred, target)
+            total_loss += loss.item()
+            total_correct += correct.item()
+            total_testset += points.size()[0]
+
+        test_acc[epoch] = total_correct / float(total_testset)
+        test_loss[epoch] = total_loss / float(total_testset)
+        print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
+            epoch, blue('test'), test_acc[epoch], test_loss[epoch]))
 
         torch.save(classifier.state_dict(), '%s/cls_model_%d.pth' % (opt.outf, epoch))
 
-    return num_classes
+    return num_classes, classes, test_acc[-1]
 
 
 if __name__ == '__main__':
@@ -181,13 +211,18 @@ if __name__ == '__main__':
 
     if opt.learning_type == "simple":
         training(opt=opt, flag=flag)
-    elif opt.learning_type == "joint":
+    else:
         n_class = opt.start_num_class
+        classes = np.array([], dtype=int)
+        accuracies = []
+
         while True:
 
-            training(opt, n_class, flag)
+            num_classes, classes, accuracy = training(opt, n_class, flag, classes)
+            accuracies.append(accuracy)
 
             flag = False
             n_class += opt.step_num_class
             if n_class > num_classes:
                 break
+                np.save(f'{opt.learning_type}.npy', accuracies)

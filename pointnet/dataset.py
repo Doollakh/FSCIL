@@ -243,13 +243,10 @@ def load_data(root, partition):
 
 
 class ModelNet40(data.Dataset):
-    def __init__(self, root, num_points, partition='train', num_class=None):
+    def __init__(self, root, num_points, partition='train'):
         self.data, self.label = load_data(root, partition)
         self.num_points = num_points
         self.partition = partition
-
-        if num_class is not None:
-            print(self.label)
 
         self.cat = {}
         with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../misc/modelnet_id.txt'), 'r') as f:
@@ -257,9 +254,14 @@ class ModelNet40(data.Dataset):
                 ls = line.strip().split()
                 self.cat[ls[0]] = int(ls[1])
 
-        if partition == 'train':
-            print(f'categories: ', self.cat)
         self.classes = list(self.cat.keys())
+
+    def filter(self, classes):
+        f = [i for i, item in enumerate(self.label) if item not in classes]
+        self.label = self.label[f]
+        self.data = self.data[f]
+        self.classes = [c for i, c in enumerate(self.classes) if i in classes]
+        print(self.classes)
 
     def __getitem__(self, item):
         pointcloud = self.data[item][:self.num_points]
