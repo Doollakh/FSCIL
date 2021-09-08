@@ -63,21 +63,22 @@ def training(opt, n_class=None, flag=False, classes=None):
 
     num_classes = len(dataset.classes)
 
-    if flag:
-        temp = rand_choice(classes, 40, n_class)
-        classes = np.concatenate((classes, temp))
-        dataset.filter(classes=classes)
-        test_dataset.filter(classes=classes)
-    else:
-        temp = rand_choice(classes, 40, opt.step_num_class)
-        classes = np.concatenate((classes, temp))
-        if opt.learning_type == 'forgetting':
-            c = n_class - opt.step_num_class
-            dataset.filter(classes[c:-1])
-            test_dataset.filter(classes[0:20])
+    if classes is not None:
+        if flag:
+            temp = rand_choice(classes, 40, n_class)
+            classes = np.concatenate((classes, temp))
+            dataset.filter(classes=classes)
+            test_dataset.filter(classes=classes)
         else:
-            dataset.filter(classes)
-            test_dataset.filter(classes)
+            temp = rand_choice(classes, 40, opt.step_num_class)
+            classes = np.concatenate((classes, temp))
+            if opt.learning_type == 'forgetting':
+                c = n_class - opt.step_num_class
+                dataset.filter(classes[c:-1])
+                test_dataset.filter(classes[0:20])
+            else:
+                dataset.filter(classes)
+                test_dataset.filter(classes)
 
     dataloader = torch.utils.data.DataLoader(
         dataset,
@@ -223,5 +224,5 @@ if __name__ == '__main__':
             flag = False
             n_class += opt.step_num_class
             if n_class > num_classes:
-                break
                 np.save(f'{opt.learning_type}.npy', accuracies)
+                break

@@ -258,6 +258,8 @@ class ModelNet40(data.Dataset):
 
     def filter(self, classes):
         f = [i for i, item in enumerate(self.label) if item in classes]
+        print(f)
+        print(len(self.label))
         self.label = self.label[f]
         self.data = self.data[f]
         self.classes = [c for i, c in enumerate(self.classes) if i in classes]
