@@ -163,7 +163,7 @@ def training(opt, n_class=None, flag=False, classes=None):
         test_acc[epoch] = total_correct / float(total_testset)
         test_loss[epoch] = total_loss / float(total_testset)
         print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
-            epoch, blue('test'), test_acc[epoch], test_loss[epoch]))
+            epoch, blue('test'), test_loss[epoch], test_acc[epoch]))
 
         torch.save(classifier.state_dict(), '%s/cls_model_%d.pth' % (opt.outf, epoch))
 
