@@ -108,9 +108,8 @@ def training(opt, n_class=None, flag=False, classes=None):
     if flag:
         print(str(classifier))
 
-    num_classes = len(dataset.classes)
     print(len(dataset), len(test_dataset))
-    print('classes', num_classes)
+    print('classes', len(dataset.classes))
 
     num_batch = len(dataset) / opt.batchSize
 
@@ -219,10 +218,12 @@ if __name__ == '__main__':
         while True:
 
             num_classes, classes, accuracy = training(opt, n_class, flag, classes)
+            print('hihhs')
             accuracies.append(accuracy)
 
             flag = False
             n_class += opt.step_num_class
             if n_class > num_classes:
+                print('break')
                 break
                 np.save(f'{opt.learning_type}.npy', accuracies)
