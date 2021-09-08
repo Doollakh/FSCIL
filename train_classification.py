@@ -99,6 +99,12 @@ def training(opt, n_class=None, flag=False, classes=None):
 
     classifier = PointNetCls(k=num_classes, feature_transform=opt.feature_transform)
 
+    epochs = opt.nepoch
+    if opt.learning_type == 'forgetting' and not flag:
+        print('loading previous model')
+        epochs = 30
+        classifier.load_state_dict(torch.load('%s/cls_model_forgetting.pth' % opt.outf))
+
     if opt.model != '':
         classifier.load_state_dict(torch.load(opt.model))
 
@@ -116,12 +122,12 @@ def training(opt, n_class=None, flag=False, classes=None):
 
     blue = lambda x: '\033[94m' + x + '\033[0m'
 
-    test_acc = np.zeros(opt.nepoch)
-    test_loss = np.zeros(opt.nepoch)
-    for epoch in range(opt.nepoch):
+    test_acc = np.zeros(epochs)
+    test_loss = np.zeros(epochs)
+    for epoch in range(epochs):
         scheduler.step()
         n = len(dataloader)
-        pbar = tqdm(total=n, desc=f'Epoch: {epoch}   ', ncols=110)
+        pbar = tqdm(total=n, desc=f'Epoch: {epoch}/{epochs}  ', ncols=110)
         for i, data in enumerate(dataloader, 0):
             points, target = data
             target = target[:, 0]
@@ -166,6 +172,9 @@ def training(opt, n_class=None, flag=False, classes=None):
             epoch, blue('test'), test_loss[epoch], test_acc[epoch]))
 
         torch.save(classifier.state_dict(), '%s/cls_model_%d.pth' % (opt.outf, epoch))
+
+    if opt.learning_type == 'forgetting':
+        torch.save(classifier.state_dict(), '%s/cls_model_forgetting.pth' % opt.outf)
 
     return num_classes, classes, test_acc[-1]
 
