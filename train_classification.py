@@ -149,7 +149,7 @@ def training(opt, n_class=None, flag=False, classes=None):
 
         pbar.close()
 
-        if opt.test_at_all_epochs or epoch + 1 == epochs:
+        if opt.test_epoch > 0 and (epoch + 1) % opt.test_epoch == 0:
             total_loss = 0
             total_correct = 0
             total_testset = 0
@@ -174,7 +174,7 @@ def training(opt, n_class=None, flag=False, classes=None):
 
         torch.save(classifier.state_dict(), '%s/cls_model_%d.pth' % (opt.outf, epoch))
 
-    if opt.test_at_all_epochs:
+    if opt.test_epoch > 0:
         np.save(f'results/accuracy_cls{n_class}_{opt.learning_type}.npy', test_acc)
         np.save(f'results/loss_cls{n_class}_{opt.learning_type}.npy', test_loss)
 
@@ -209,7 +209,7 @@ if __name__ == '__main__':
     parser.add_argument('--feature_transform', action='store_true', help="use feature transform")
     parser.add_argument('--is_h5', type=bool, default=False,
                         help='is h5')
-    parser.add_argument('--test_at_all_epochs', type=bool, default=True, help='')
+    parser.add_argument('--test_epoch', type=int, default=1, help='1 for all epochs, 0 for last epoch, n for each n epoch')
     parser.add_argument('--progress', type=bool, default=False,
                         help='has new progreess?')
 
