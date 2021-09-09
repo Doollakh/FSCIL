@@ -75,7 +75,7 @@ def training(opt, n_class=None, flag=False, classes=None):
             if opt.learning_type == 'forgetting':
                 c = n_class - opt.step_num_class
                 dataset.filter(classes[c:-1])
-                test_dataset.filter(classes[0:20])
+                test_dataset.filter(classes)
             else:
                 dataset.filter(classes)
                 test_dataset.filter(classes)
