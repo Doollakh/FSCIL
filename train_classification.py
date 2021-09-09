@@ -149,6 +149,7 @@ def training(opt, n_class=None, flag=False, classes=None):
 
         pbar.close()
 
+
         total_loss = 0
         total_correct = 0
         total_testset = 0
@@ -172,6 +173,9 @@ def training(opt, n_class=None, flag=False, classes=None):
             epoch, blue('test'), test_loss[epoch], test_acc[epoch]))
 
         torch.save(classifier.state_dict(), '%s/cls_model_%d.pth' % (opt.outf, epoch))
+
+    np.save(f'results/accuracy_cls{n_class}_{opt.learning_type}.npy', test_acc)
+    np.save(f'results/loss_cls{n_class}_{opt.learning_type}.npy', test_loss)
 
     if opt.learning_type == 'forgetting':
         torch.save(classifier.state_dict(), '%s/cls_model_forgetting.pth' % opt.outf)
