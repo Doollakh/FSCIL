@@ -127,7 +127,7 @@ def training(opt, n_class=None, flag=False, classes=None):
     for epoch in range(epochs):
         scheduler.step()
         n = len(dataloader)
-        pbar = tqdm(total=n, desc=f'Epoch: {epoch}/{epochs}  ', ncols=110)
+        pbar = tqdm(total=n, desc=f'Epoch: {epoch+1}/{epochs}  ', ncols=110)
         for i, data in enumerate(dataloader, 0):
             points, target = data
             target = target[:, 0]
@@ -149,7 +149,7 @@ def training(opt, n_class=None, flag=False, classes=None):
 
         pbar.close()
 
-        if opt.test_epoch > 0 and (epoch + 1) % opt.test_epoch == 0:
+        if opt.test_epoch > 0 and (epoch + 1) % opt.test_epoch == 0 or (epoch + 1) == epochs:
             total_loss = 0
             total_correct = 0
             total_testset = 0
@@ -170,7 +170,7 @@ def training(opt, n_class=None, flag=False, classes=None):
             test_acc[epoch] = total_correct / float(total_testset)
             test_loss[epoch] = total_loss / float(total_testset)
             print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
-                epoch, blue('test'), test_loss[epoch], test_acc[epoch]))
+                epoch + 1, blue('test'), test_loss[epoch], test_acc[epoch]))
 
         torch.save(classifier.state_dict(), '%s/cls_model_%d.pth' % (opt.outf, epoch))
 
