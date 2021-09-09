@@ -73,8 +73,7 @@ def training(opt, n_class=None, flag=False, classes=None):
             temp = rand_choice(classes, 40, opt.step_num_class)
             classes = np.concatenate((classes, temp))
             if opt.learning_type == 'forgetting':
-                c = n_class - opt.step_num_class
-                dataset.filter(classes[c:-1])
+                dataset.filter(temp)
                 test_dataset.filter(classes)
             else:
                 dataset.filter(classes)
