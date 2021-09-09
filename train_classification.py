@@ -149,33 +149,34 @@ def training(opt, n_class=None, flag=False, classes=None):
 
         pbar.close()
 
+        if opt.test_at_all_epochs or epoch + 1 == epochs:
+            total_loss = 0
+            total_correct = 0
+            total_testset = 0
+            for i, data in tqdm(enumerate(testdataloader, 0)):
+                points, target = data
+                target = target[:, 0]
+                points = points.transpose(2, 1)
+                points, target = points.cuda(), target.cuda()
+                classifier = classifier.eval()
+                pred, _, _ = classifier(points)
+                pred_choice = pred.data.max(1)[1]
+                correct = pred_choice.eq(target.data).cpu().sum()
+                loss = F.nll_loss(pred, target)
+                total_loss += loss.item()
+                total_correct += correct.item()
+                total_testset += points.size()[0]
 
-        total_loss = 0
-        total_correct = 0
-        total_testset = 0
-        for i, data in tqdm(enumerate(testdataloader, 0)):
-            points, target = data
-            target = target[:, 0]
-            points = points.transpose(2, 1)
-            points, target = points.cuda(), target.cuda()
-            classifier = classifier.eval()
-            pred, _, _ = classifier(points)
-            pred_choice = pred.data.max(1)[1]
-            correct = pred_choice.eq(target.data).cpu().sum()
-            loss = F.nll_loss(pred, target)
-            total_loss += loss.item()
-            total_correct += correct.item()
-            total_testset += points.size()[0]
-
-        test_acc[epoch] = total_correct / float(total_testset)
-        test_loss[epoch] = total_loss / float(total_testset)
-        print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
-            epoch, blue('test'), test_loss[epoch], test_acc[epoch]))
+            test_acc[epoch] = total_correct / float(total_testset)
+            test_loss[epoch] = total_loss / float(total_testset)
+            print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
+                epoch, blue('test'), test_loss[epoch], test_acc[epoch]))
 
         torch.save(classifier.state_dict(), '%s/cls_model_%d.pth' % (opt.outf, epoch))
 
-    np.save(f'results/accuracy_cls{n_class}_{opt.learning_type}.npy', test_acc)
-    np.save(f'results/loss_cls{n_class}_{opt.learning_type}.npy', test_loss)
+    if opt.test_at_all_epochs:
+        np.save(f'results/accuracy_cls{n_class}_{opt.learning_type}.npy', test_acc)
+        np.save(f'results/loss_cls{n_class}_{opt.learning_type}.npy', test_loss)
 
     if opt.learning_type == 'forgetting':
         torch.save(classifier.state_dict(), '%s/cls_model_forgetting.pth' % opt.outf)
@@ -208,6 +209,7 @@ if __name__ == '__main__':
     parser.add_argument('--feature_transform', action='store_true', help="use feature transform")
     parser.add_argument('--is_h5', type=bool, default=False,
                         help='is h5')
+    parser.add_argument('--test_at_all_epochs', type=bool, default=True, help='')
     parser.add_argument('--progress', type=bool, default=False,
                         help='has new progreess?')
 
