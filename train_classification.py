@@ -129,19 +129,20 @@ def training(opt, n_class=None, flag=False, classes=None):
         pbar = tqdm(total=n, desc=f'Epoch: {epoch+1}/{epochs}  ', ncols=110)
         for i, data in enumerate(dataloader, 0):
             points, target = data
-            target = target[:, 0]
-            points = points.transpose(2, 1)
-            points, target = points.cuda(), target.cuda()
-            optimizer.zero_grad()
-            classifier = classifier.train()
-            pred, trans, trans_feat = classifier(points)
-            loss = F.nll_loss(pred, target)
-            if opt.feature_transform:
-                loss += feature_transform_regularizer(trans_feat) * 0.001
-            loss.backward()
-            optimizer.step()
-            pred_choice = pred.data.max(1)[1]
-            correct = pred_choice.eq(target.data).cpu().sum()
+            if len(points) != 1:
+                target = target[:, 0]
+                points = points.transpose(2, 1)
+                points, target = points.cuda(), target.cuda()
+                optimizer.zero_grad()
+                classifier = classifier.train()
+                pred, trans, trans_feat = classifier(points)
+                loss = F.nll_loss(pred, target)
+                if opt.feature_transform:
+                    loss += feature_transform_regularizer(trans_feat) * 0.001
+                loss.backward()
+                optimizer.step()
+                pred_choice = pred.data.max(1)[1]
+                correct = pred_choice.eq(target.data).cpu().sum()
 
             pbar.update(1)
             pbar.postfix = f'loss: {round(loss.item(), 2)}, acc: {round(correct.item() / float(opt.batchSize), 2)}'
