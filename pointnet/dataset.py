@@ -256,8 +256,8 @@ class ModelNet40(data.Dataset):
 
         self.classes = list(self.cat.keys())
 
-    def filter(self, classes):
-        f = [i for i, item in enumerate(self.label) if item in classes]
+    def filter(self, classes, except_samples = []):
+        f = [i for i, item in enumerate(self.label) if (item in classes) or (i in except_samples)]
         self.label = self.label[f]
         self.data = self.data[f]
         self.classes = [c for i, c in enumerate(self.classes) if i in classes]

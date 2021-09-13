@@ -14,7 +14,7 @@ import sys
 import numpy as np
 
 
-# learning_type = simple, joint
+# learning_type = simple, joint, exemplar, lwf
 # forgetting
 
 # 20, 25, 30, 35, 40
@@ -27,7 +27,11 @@ def rand_choice(choices, size, count):
 
 
 # noinspection PyUnboundLocalVariable
-def training(opt, n_class=None, flag=False, classes=None):
+def training(opt, n_class=None, flag=False, classes=None, except_samples = []):
+
+    _fe = opt.learning_type == 'forgetting' or opt.learning_type == 'exemplar'
+    assert (opt.exemplar_num is not None and opt.exemplar_num > 0)
+
     if opt.dataset_type == 'shapenet':
         dataset = ShapeNetDataset(
             root=opt.dataset,
@@ -72,8 +76,8 @@ def training(opt, n_class=None, flag=False, classes=None):
         else:
             temp = rand_choice(classes, 40, opt.step_num_class)
             classes = np.concatenate((classes, temp))
-            if opt.learning_type == 'forgetting':
-                dataset.filter(temp)
+            if _fe:
+                dataset.filter(temp, except_samples)
                 test_dataset.filter(classes)
             else:
                 dataset.filter(classes)
@@ -99,10 +103,10 @@ def training(opt, n_class=None, flag=False, classes=None):
     classifier = PointNetCls(k=num_classes, feature_transform=opt.feature_transform)
 
     epochs = opt.nepoch
-    if opt.learning_type == 'forgetting' and not flag:
+    if _fe and not flag:
         print('loading previous model')
         epochs = 30
-        classifier.load_state_dict(torch.load('%s/cls_model_forgetting.pth' % opt.outf))
+        classifier.load_state_dict(torch.load('%s/cls_model_%s.pth' % (opt.outf, opt.learning_type)))
 
     if opt.model != '':
         classifier.load_state_dict(torch.load(opt.model))
@@ -126,7 +130,7 @@ def training(opt, n_class=None, flag=False, classes=None):
     for epoch in range(epochs):
         scheduler.step()
         n = len(dataloader)
-        pbar = tqdm(total=n, desc=f'Epoch: {epoch+1}/{epochs}  ', ncols=110)
+        pbar = tqdm(total=n, desc=f'Epoch: {epoch + 1}/{epochs}  ', ncols=110)
         for i, data in enumerate(dataloader, 0):
             points, target = data
             if len(points) != 1:
@@ -178,8 +182,8 @@ def training(opt, n_class=None, flag=False, classes=None):
         np.save(f'results/accuracy_cls{n_class}_{opt.learning_type}.npy', test_acc)
         np.save(f'results/loss_cls{n_class}_{opt.learning_type}.npy', test_loss)
 
-    if opt.learning_type == 'forgetting':
-        torch.save(classifier.state_dict(), '%s/cls_model_forgetting.pth' % opt.outf)
+    if _fe:
+        torch.save(classifier.state_dict(), '%s/cls_model_%s.pth' % (opt.outf, opt.learning_type))
 
     return num_classes, classes, test_acc[-1]
 
@@ -209,9 +213,11 @@ if __name__ == '__main__':
     parser.add_argument('--feature_transform', action='store_true', help="use feature transform")
     parser.add_argument('--is_h5', type=bool, default=False,
                         help='is h5')
-    parser.add_argument('--test_epoch', type=int, default=1, help='1 for all epochs, 0 for last epoch, n for each n epoch')
+    parser.add_argument('--test_epoch', type=int, default=1,
+                        help='1 for all epochs, 0 for last epoch, n for each n epoch')
+    parser.add_argument('--exemplar_num', type=int, default=1, help='iif learning_type is exemplar')
     parser.add_argument('--progress', type=bool, default=False,
-                        help='has new progreess?')
+                        help='has new progress?')
 
     opt = parser.parse_args()
     print(opt)
