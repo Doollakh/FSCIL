@@ -9,3 +9,4 @@ cls/
 seg/
 *.egg-info/
 data/*
+results/*

@@ -69,7 +69,7 @@ class ShapeNetDataset(data.Dataset):
                  classification=False,
                  class_choice=None,
                  split='train',
-                 data_augmentation=True, num_class=None):
+                 data_augmentation=True):
         self.npoints = npoints
         self.root = root
         self.catfile = os.path.join(self.root, 'synsetoffset2category.txt')
@@ -156,7 +156,7 @@ class ModelNetDataset(data.Dataset):
                  root,
                  npoints=2500,
                  split='train',
-                 data_augmentation=True, num_class=None):
+                 data_augmentation=True):
         self.npoints = npoints
         self.root = root
         self.split = split
