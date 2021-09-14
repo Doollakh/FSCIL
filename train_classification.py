@@ -279,7 +279,7 @@ if __name__ == '__main__':
     parser.add_argument('--test_epoch', type=int, default=1,
                         help='1 for all epochs, 0 for last epoch, n for each n epoch')
     parser.add_argument('--exemplar_num', type=int, default=1, help='iif learning_type is exemplar')
-    parser.add_argument('--continue_fe', type=int, default=False, help='')
+    parser.add_argument('--continue_fe', type=bool, default=False, help='')
     parser.add_argument('--progress', type=bool, default=False,
                         help='has new progress?')
 
