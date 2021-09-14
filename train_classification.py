@@ -32,6 +32,8 @@ class Learning:
         _fe = self.opt.learning_type == 'forgetting' or self.opt.learning_type == 'exemplar'
         assert (self.opt.exemplar_num is not None and self.opt.exemplar_num > 0)
         flag = True
+        if self.opt.continue_from is not None:
+            assert _fe
 
         if self.opt.learning_type == "simple":
             self.classes = None
@@ -43,7 +45,11 @@ class Learning:
 
             while True:
 
-                self.train(flag, _fe)
+                skip = False
+                if self.opt.continue_from is not None:
+                    skip = self.opt.continue_from > self.n_class
+
+                self.train(flag, _fe, skip)
 
                 flag = False
                 self.n_class += self.opt.step_num_class
@@ -106,7 +112,7 @@ class Learning:
                 visited[item] += 1
         return visited_in[self.classes].reshape(len(self.classes) * n)
 
-    def train(self, flag=False, _fe=False):
+    def train(self, flag=False, _fe=False, skip=False):
 
         dataset, test_dataset = self.select_dataset()
 
@@ -119,7 +125,7 @@ class Learning:
             else:
                 if self.opt.learning_type == 'exemplar':
                     self.except_samples = self.find_first_occurrence(dataset, self.opt.exemplar_num)
-                    print('old_samples: ', self.except_samples)
+                    # print('old_samples: ', self.except_samples)
                 temp = self.rand_choice(self.num_classes, self.opt.step_num_class)
                 self.classes = np.concatenate((self.classes, temp))
                 if _fe:
@@ -149,7 +155,7 @@ class Learning:
         classifier = PointNetCls(k=self.num_classes, feature_transform=self.opt.feature_transform)
 
         epochs = opt.nepoch
-        if _fe and not flag:
+        if (_fe and not flag) or skip:
             print('loading previous model')
             epochs = 30
             classifier.load_state_dict(torch.load('%s/cls_model_%s.pth' % (self.opt.outf, self.opt.learning_type)))
@@ -173,6 +179,14 @@ class Learning:
 
         test_acc = np.zeros(epochs)
         test_loss = np.zeros(epochs)
+        if skip:
+            print('skipping this stage ...')
+            test_loss[-1], test_acc[-1] = self.test(classifier, testdataloader)
+            self.accuracies.append(test_acc[-1])
+            print('%s loss: %f accuracy: %f\n' % (blue('test'), test_loss[-1], test_acc[-1]))
+            print()
+            return
+
         for epoch in range(epochs):
             scheduler.step()
             n = len(dataloader)
@@ -201,25 +215,7 @@ class Learning:
             pbar.close()
 
             if self.opt.test_epoch > 0 and (epoch + 1) % self.opt.test_epoch == 0 or (epoch + 1) == epochs:
-                total_loss = 0
-                total_correct = 0
-                total_testset = 0
-                for i, data in tqdm(enumerate(testdataloader, 0)):
-                    points, target = data
-                    target = target[:, 0]
-                    points = points.transpose(2, 1)
-                    points, target = points.cuda(), target.cuda()
-                    classifier = classifier.eval()
-                    pred, _, _ = classifier(points)
-                    pred_choice = pred.data.max(1)[1]
-                    correct = pred_choice.eq(target.data).cpu().sum()
-                    loss = F.nll_loss(pred, target)
-                    total_loss += loss.item()
-                    total_correct += correct.item()
-                    total_testset += points.size()[0]
-
-                test_acc[epoch] = total_correct / float(total_testset)
-                test_loss[epoch] = total_loss / float(total_testset)
+                test_loss[epoch], test_acc[epoch] = self.test(classifier, testdataloader)
                 print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
                     epoch + 1, blue('test'), test_loss[epoch], test_acc[epoch]))
 
@@ -232,6 +228,27 @@ class Learning:
         if _fe:
             torch.save(classifier.state_dict(), '%s/cls_model_%s.pth' % (self.opt.outf, self.opt.learning_type))
             self.accuracies.append(test_acc[-1])
+
+    @staticmethod
+    def test(classifier, testdataloader):
+        total_loss = 0
+        total_correct = 0
+        total_testset = 0
+        for i, data in tqdm(enumerate(testdataloader, 0)):
+            points, target = data
+            target = target[:, 0]
+            points = points.transpose(2, 1)
+            points, target = points.cuda(), target.cuda()
+            classifier = classifier.eval()
+            pred, _, _ = classifier(points)
+            pred_choice = pred.data.max(1)[1]
+            correct = pred_choice.eq(target.data).cpu().sum()
+            loss = F.nll_loss(pred, target)
+            total_loss += loss.item()
+            total_correct += correct.item()
+            total_testset += points.size()[0]
+
+        return total_loss / float(total_testset), total_correct / float(total_testset)
 
 
 if __name__ == '__main__':
@@ -262,6 +279,7 @@ if __name__ == '__main__':
     parser.add_argument('--test_epoch', type=int, default=1,
                         help='1 for all epochs, 0 for last epoch, n for each n epoch')
     parser.add_argument('--exemplar_num', type=int, default=1, help='iif learning_type is exemplar')
+    parser.add_argument('--continue_from', type=int, default=None, help='')
     parser.add_argument('--progress', type=bool, default=False,
                         help='has new progress?')
 
