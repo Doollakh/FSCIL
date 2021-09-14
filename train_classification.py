@@ -32,7 +32,7 @@ class Learning:
         _fe = self.opt.learning_type == 'forgetting' or self.opt.learning_type == 'exemplar'
         assert (self.opt.exemplar_num is not None and self.opt.exemplar_num > 0)
         flag = True
-        if self.opt.continue_from is not None:
+        if self.opt.continue_fe is True:
             assert _fe
 
         if self.opt.learning_type == "simple":
@@ -46,8 +46,8 @@ class Learning:
             while True:
 
                 skip = False
-                if self.opt.continue_from is not None:
-                    skip = self.opt.continue_from > self.n_class
+                if self.opt.continue_fe is True:
+                    skip = flag
 
                 self.train(flag, _fe, skip)
 
@@ -279,7 +279,7 @@ if __name__ == '__main__':
     parser.add_argument('--test_epoch', type=int, default=1,
                         help='1 for all epochs, 0 for last epoch, n for each n epoch')
     parser.add_argument('--exemplar_num', type=int, default=1, help='iif learning_type is exemplar')
-    parser.add_argument('--continue_from', type=int, default=None, help='')
+    parser.add_argument('--continue_fe', type=int, default=False, help='')
     parser.add_argument('--progress', type=bool, default=False,
                         help='has new progress?')
 
