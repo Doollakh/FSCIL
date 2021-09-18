@@ -167,7 +167,8 @@ class Learning:
         elif _fe and not flag:
             print('loading previous model')
             classifier.load_state_dict(
-                torch.load('%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class)))
+                torch.load('%s/cls_model_%s_%d.pth' % (
+                self.save_dir, self.opt.learning_type, self.n_class - self.opt.step_num_class)))
 
         if self.opt.model != '':
             classifier.load_state_dict(torch.load(self.opt.model))
