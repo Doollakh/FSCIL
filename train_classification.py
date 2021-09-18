@@ -226,7 +226,8 @@ class Learning:
                 print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
                     epoch + 1, blue('test'), test_loss[epoch], test_acc[epoch]))
 
-            torch.save(classifier.state_dict(), '%s/cls_model_%d_%d.pth' % (self.save_dir, epoch, self.n_class))
+            if self.opt.save_after_epoch:
+                torch.save(classifier.state_dict(), '%s/cls_model_%d_%d.pth' % (self.save_dir, epoch, self.n_class))
 
         if self.opt.test_epoch > 0:
             np.save(f'{self.save_dir}/results/accuracy_cls{self.n_class}_{self.opt.learning_type}.npy', test_acc)
@@ -286,6 +287,8 @@ if __name__ == '__main__':
     parser.add_argument('--feature_transform', action='store_true', help="use feature transform")
     parser.add_argument('--is_h5', type=bool, default=False,
                         help='is h5')
+    parser.add_argument('--save_after_epoch', type=bool, default=False,
+                        help='save model after each epoch')
     parser.add_argument('--test_epoch', type=int, default=1,
                         help='1 for all epochs, 0 for last epoch, n for each n epoch')
     parser.add_argument('--exemplar_num', type=int, default=1, help='iif learning_type is exemplar')
