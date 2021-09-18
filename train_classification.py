@@ -10,17 +10,19 @@ from pointnet.dataset import ShapeNetDataset, ModelNetDataset, ModelNet40
 from pointnet.model import PointNetCls, feature_transform_regularizer
 import torch.nn.functional as F
 from tqdm import tqdm
-import sys
 import numpy as np
-
+from pathlib import Path
 
 # learning_type = simple, joint, exemplar, lwf
 # forgetting
+from utils.general import increment_path
+
 
 class Learning:
 
-    def __init__(self, options):
+    def __init__(self, options, s_d):
         self.opt = options
+        self.save_dir = s_d
         self.n_class = 0
         self.classes = None
         self.except_samples = []
@@ -32,8 +34,8 @@ class Learning:
         _fe = self.opt.learning_type == 'forgetting' or self.opt.learning_type == 'exemplar'
         assert (self.opt.exemplar_num is not None and self.opt.exemplar_num > 0)
         flag = True
-        if self.opt.continue_fe is True:
-            assert _fe
+        if self.opt.continue_from is True:
+            assert self.opt.learning_type != 'simple'
 
         if self.opt.learning_type == "simple":
             self.classes = None
@@ -46,8 +48,8 @@ class Learning:
             while True:
 
                 skip = False
-                if self.opt.continue_fe is True:
-                    skip = flag
+                if self.opt.continue_from is not None:
+                    skip = self.opt.continue_from > self.n_class
 
                 self.train(flag, _fe, skip)
 
@@ -148,17 +150,24 @@ class Learning:
             num_workers=int(self.opt.workers))
 
         try:
-            os.makedirs(self.opt.outf)
+            (self.save_dir / 'results' if self.opt.test_epoch > 0 else self.save_dir).mkdir(parents=True, exist_ok=True)
         except OSError:
             pass
 
         classifier = PointNetCls(k=self.num_classes, feature_transform=self.opt.feature_transform)
 
         epochs = opt.nepoch
-        if (_fe and not flag) or skip:
-            print('loading previous model')
+        if _fe and not flag:
             epochs = 30
-            classifier.load_state_dict(torch.load('%s/cls_model_%s.pth' % (self.opt.outf, self.opt.learning_type)))
+
+        if skip:
+            print('loading previous model')
+            classifier.load_state_dict(
+                torch.load('%s/cls_model_%s_%d.pth' % (self.opt.dir_pretrained, self.opt.learning_type, self.n_class)))
+        elif _fe and not flag:
+            print('loading previous model')
+            classifier.load_state_dict(
+                torch.load('%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class)))
 
         if self.opt.model != '':
             classifier.load_state_dict(torch.load(self.opt.model))
@@ -172,8 +181,6 @@ class Learning:
 
         print(len(dataset), len(test_dataset))
         print('classes', len(dataset.classes))
-
-        num_batch = len(dataset) / self.opt.batchSize
 
         blue = lambda x: '\033[94m' + x + '\033[0m'
 
@@ -219,14 +226,15 @@ class Learning:
                 print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
                     epoch + 1, blue('test'), test_loss[epoch], test_acc[epoch]))
 
-            torch.save(classifier.state_dict(), '%s/cls_model_%d.pth' % (self.opt.outf, epoch))
+            torch.save(classifier.state_dict(), '%s/cls_model_%d_%d.pth' % (self.save_dir, epoch, self.n_class))
 
         if self.opt.test_epoch > 0:
-            np.save(f'results/accuracy_cls{self.n_class}_{self.opt.learning_type}.npy', test_acc)
-            np.save(f'results/loss_cls{self.n_class}_{self.opt.learning_type}.npy', test_loss)
+            np.save(f'{self.save_dir}/results/accuracy_cls{self.n_class}_{self.opt.learning_type}.npy', test_acc)
+            np.save(f'{self.save_dir}/results/loss_cls{self.n_class}_{self.opt.learning_type}.npy', test_loss)
 
+        torch.save(classifier.state_dict(),
+                   '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
         if _fe:
-            torch.save(classifier.state_dict(), '%s/cls_model_%s.pth' % (self.opt.outf, self.opt.learning_type))
             self.accuracies.append(test_acc[-1])
 
     @staticmethod
@@ -270,6 +278,8 @@ if __name__ == '__main__':
     parser.add_argument(
         '--manualSeed', type=int, help='', default=1)
     parser.add_argument('--outf', type=str, default='cls', help='output folder')
+    parser.add_argument('--name', default='exp', help='save results to project/name')
+    parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--model', type=str, default='', help='model path')
     parser.add_argument('--dataset', type=str, required=True, help="dataset path")
     parser.add_argument('--dataset_type', type=str, default='modelnet40', help="dataset type shapenet|modelnet40")
@@ -279,12 +289,15 @@ if __name__ == '__main__':
     parser.add_argument('--test_epoch', type=int, default=1,
                         help='1 for all epochs, 0 for last epoch, n for each n epoch')
     parser.add_argument('--exemplar_num', type=int, default=1, help='iif learning_type is exemplar')
-    parser.add_argument('--continue_fe', type=bool, default=False, help='')
+    parser.add_argument('--continue_from', type=int, default=None, help='')
+    parser.add_argument('--dir_pretrained', type=str, default='cls', help='load pretrained model')
     parser.add_argument('--progress', type=bool, default=False,
                         help='has new progress?')
 
     opt = parser.parse_args()
     print(opt)
+
+    save_dir = increment_path(Path(opt.outf) / opt.name, exist_ok=opt.exist_ok)
 
     # opt.manualSeed = random.randint(1, 10000)  # fix seed
     print("Manual Seed: ", opt.manualSeed)
@@ -292,5 +305,5 @@ if __name__ == '__main__':
     torch.manual_seed(opt.manualSeed)
     np.random.seed(opt.manualSeed)
 
-    learning = Learning(opt)
+    learning = Learning(opt, save_dir)
     learning.start()
