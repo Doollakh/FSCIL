@@ -160,7 +160,7 @@ class Learning:
         if _fe and not flag:
             epochs = 30
 
-        if skip and _fe:
+        if skip:
             print('loading previous model')
             classifier.load_state_dict(
                 torch.load('%s/cls_model_%s_%d.pth' % (self.opt.dir_pretrained, self.opt.learning_type, self.n_class)))
@@ -193,6 +193,8 @@ class Learning:
             self.accuracies.append(test_acc[-1])
             print('%s loss: %f accuracy: %f\n' % (blue('test'), test_loss[-1], test_acc[-1]))
             print()
+            torch.save(classifier.state_dict(),
+                       '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
             return
 
         for epoch in range(epochs):
