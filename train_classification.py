@@ -160,7 +160,7 @@ class Learning:
         if _fe and not flag:
             epochs = 30
 
-        if skip:
+        if skip and _fe:
             print('loading previous model')
             classifier.load_state_dict(
                 torch.load('%s/cls_model_%s_%d.pth' % (self.opt.dir_pretrained, self.opt.learning_type, self.n_class)))
