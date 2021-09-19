@@ -13,7 +13,7 @@ from tqdm import tqdm
 import numpy as np
 from pathlib import Path
 
-# learning_type = simple, joint, exemplar, lwf
+# learning_type = simple, joint, exemplar, lwf, bExemplar
 # forgetting
 from utils.general import increment_path
 
@@ -31,7 +31,9 @@ class Learning:
 
     def start(self):
 
-        _fe = self.opt.learning_type == 'forgetting' or self.opt.learning_type == 'exemplar'
+        _fe = self.opt.learning_type == 'forgetting' \
+              or self.opt.learning_type == 'exemplar' \
+              or self.opt.learning_type == 'bExemplar'
         assert (self.opt.exemplar_num is not None and self.opt.exemplar_num > 0)
         flag = True
         if self.opt.continue_from is True:
@@ -105,6 +107,10 @@ class Learning:
 
         return dataset, test_dataset
 
+    def find_best_samples(self,  n):
+        arr = np.load('utils/best_exemplar.npy')[:, :n]
+        return arr[self.classes].reshape(len(self.classes) * n)
+
     def find_first_occurrence(self, dataset, n):
         visited = np.zeros(self.num_classes, dtype=int)
         visited_in = np.zeros((self.num_classes, n), dtype=int)
@@ -127,7 +133,9 @@ class Learning:
             else:
                 if self.opt.learning_type == 'exemplar':
                     self.except_samples = self.find_first_occurrence(dataset, self.opt.exemplar_num)
-                    # print('old_samples: ', self.except_samples)
+                if self.opt.learning_type == 'bExemplar':
+                    self.except_samples = self.find_best_samples(self.opt.exemplar_num)
+                    print('old_samples: ', self.except_samples)
                 temp = self.rand_choice(self.num_classes, self.opt.step_num_class)
                 self.classes = np.concatenate((self.classes, temp))
                 if _fe:
@@ -168,7 +176,7 @@ class Learning:
             print('loading previous model')
             classifier.load_state_dict(
                 torch.load('%s/cls_model_%s_%d.pth' % (
-                self.save_dir, self.opt.learning_type, self.n_class - self.opt.step_num_class)))
+                    self.save_dir, self.opt.learning_type, self.n_class - self.opt.step_num_class)))
 
         if self.opt.model != '':
             classifier.load_state_dict(torch.load(self.opt.model))
