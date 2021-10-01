@@ -1,18 +1,21 @@
 from __future__ import print_function
+
 import argparse
-import os
+import copy
 import random
+from pathlib import Path
+
+import numpy as np
 import torch
+import torch.nn.functional as F
 import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
-from pointnet.dataset import ShapeNetDataset, ModelNetDataset, ModelNet40
-from pointnet.model import PointNetCls, feature_transform_regularizer
-import torch.nn.functional as F
 from tqdm import tqdm
-import numpy as np
-from pathlib import Path
 
+from pointnet.dataset import ShapeNetDataset, ModelNetDataset, ModelNet40
+from pointnet.losses import KnowlegeDistilation, PointNetLoss
+from pointnet.model import PointNetCls, PointNetLwf
 # learning_type = simple, joint, exemplar, lwf, bExemplar
 # forgetting
 from utils.general import increment_path
@@ -34,6 +37,7 @@ class Learning:
         _fe = self.opt.learning_type == 'forgetting' \
               or self.opt.learning_type == 'exemplar' \
               or self.opt.learning_type == 'bExemplar'
+        lwf = False if not _fe else self.opt.lwf
         assert (self.opt.exemplar_num is not None and self.opt.exemplar_num > 0)
         flag = True
         if self.opt.continue_from is True:
@@ -53,7 +57,7 @@ class Learning:
                 if self.opt.continue_from is not None:
                     skip = self.opt.continue_from > self.n_class
 
-                self.train(flag, _fe, skip)
+                self.train(flag, _fe, skip, lwf)
 
                 flag = False
                 self.n_class += self.opt.step_num_class
@@ -107,7 +111,7 @@ class Learning:
 
         return dataset, test_dataset
 
-    def find_best_samples(self,  n):
+    def find_best_samples(self, n):
         arr = np.load('utils/best_exemplar.npy')[:, :n]
         return arr[self.classes].reshape(len(self.classes) * n)
 
@@ -120,7 +124,7 @@ class Learning:
                 visited[item] += 1
         return visited_in[self.classes].reshape(len(self.classes) * n)
 
-    def train(self, flag=False, _fe=False, skip=False):
+    def train(self, flag=False, _fe=False, skip=False, lwf=False):
 
         dataset, test_dataset = self.select_dataset()
 
@@ -205,6 +209,13 @@ class Learning:
                        '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
             return
 
+        point_loss = PointNetLoss().cuda()
+        if lwf:
+            shared_model = copy.deepcopy(classifier)
+            new_model = PointNetLwf(shared_model, k=dataset.classes).cuda()
+            lamb = 3
+            kd_loss = KnowlegeDistilation(T=float(1)).cuda()
+
         for epoch in range(epochs):
             scheduler.step()
             n = len(dataloader)
@@ -213,14 +224,21 @@ class Learning:
                 points, target = data
                 if len(points) != 1:
                     target = target[:, 0]
-                    points = points.transpose(2, 1)
+                    points.transpose_(2, 1)
                     points, target = points.cuda(), target.cuda()
                     optimizer.zero_grad()
-                    classifier = classifier.train()
+                    if lwf:
+                        classifier = classifier.eval()
+                    else:
+                        classifier = classifier.train()
                     pred, trans, trans_feat = classifier(points)
-                    loss = F.nll_loss(pred, target)
-                    if self.opt.feature_transform:
-                        loss += feature_transform_regularizer(trans_feat) * 0.001
+                    if lwf:
+                        old_pred, new_pred, new_feat, trans_feat = new_model(points)
+                        loss = point_loss(new_pred, target, trans_feat, self.opt.feature_transform)
+                        kdl = kd_loss(old_pred, pred)
+                        loss += kdl * lamb
+                    else:
+                        loss = point_loss(pred, target, trans_feat, self.opt.feature_transform)
                     loss.backward()
                     optimizer.step()
                     pred_choice = pred.data.max(1)[1]
@@ -257,7 +275,7 @@ class Learning:
         for i, data in tqdm(enumerate(testdataloader, 0)):
             points, target = data
             target = target[:, 0]
-            points = points.transpose(2, 1)
+            points.transpose_(2, 1)
             points, target = points.cuda(), target.cuda()
             classifier = classifier.eval()
             pred, _, _ = classifier(points)

@@ -150,6 +150,63 @@ class PointNetCls(nn.Module):
         return F.log_softmax(x, dim=1), trans, trans_feat
 
 
+def init_weights(m):
+    if type(m) == nn.Linear:
+        nn.init.xavier_uniform_(m.weight)
+        if m.bias is not None:
+            m.bias.data.fill_(0)
+
+
+class PointNetLwf(nn.Module):
+    def __init__(self, shared_model, k):
+        super(PointNetLwf, self).__init__()
+        for param in shared_model.parameters():
+            param.requires_grad = True
+        fc1 = shared_model.fc1
+        fc2 = shared_model.fc2
+        fc3 = shared_model.fc3
+        dropout = shared_model.dropout
+        bn1 = shared_model.bn1
+        bn2 = shared_model.bn2
+        self.shared_model = shared_model.feat
+
+        self.classifiers = nn.ModuleList([
+            nn.ModuleDict({
+                'fc1': fc1,
+                'bn1': bn1,
+                'dropout': dropout,
+                'fc2': fc2,
+                'bn2': bn2,
+                'fc3': fc3
+            }),
+            nn.ModuleDict({
+                'fc1': nn.Linear(fc1.in_features, 512),
+                'bn1': nn.BatchNorm1d(512),
+                'dropout': nn.Dropout(p=0.3),
+                'fc2': nn.Linear(512, 256),
+                'bn2': nn.BatchNorm1d(256),
+                'fc3': nn.Linear(256, k)
+            })
+        ])
+
+        self.classifiers[1].apply(init_weights)
+
+    def forward(self, x):
+        x, trans, trans_feat = self.shared_model(x)
+
+        # old
+        old = F.relu(self.classifiers[0].bn1(self.classifiers[0].fc1(x)))
+        old = F.relu(self.classifiers[0].bn2(self.classifiers[0].dropout(self.classifiers[0].fc2(old))))
+        feat = old
+        old = self.classifiers[0].fc3(old)
+
+        # new
+        new = F.relu(self.classifiers[1].bn1(self.classifiers[1].fc1(x)))
+        new = F.relu(self.classifiers[1].bn2(self.classifiers[1].dropout(self.classifiers[1].fc2(new))))
+        new = self.classifiers[1].fc3(new)
+        return F.log_softmax(old, dim=-1), F.log_softmax(new, dim=-1), feat, trans_feat
+
+
 class PointNetDenseCls(nn.Module):
     def __init__(self, k=2, feature_transform=False):
         super(PointNetDenseCls, self).__init__()
