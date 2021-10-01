@@ -301,6 +301,8 @@ if __name__ == '__main__':
         '--nepoch', type=int, default=250, help='number of epochs to train for')
     parser.add_argument(
         '--learning_type', type=str, default='simple', help='')
+    parser.add_argument('--lwf', type=bool, default=False,
+                        help='is lwf')
     parser.add_argument(
         '--start_num_class', type=int, help='', default=20)
     parser.add_argument(
