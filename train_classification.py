@@ -212,7 +212,7 @@ class Learning:
         point_loss = PointNetLoss().cuda()
         if lwf:
             shared_model = copy.deepcopy(classifier)
-            new_model = PointNetLwf(shared_model, k=dataset.classes).cuda()
+            new_model = PointNetLwf(shared_model, k=len(dataset.classes)).cuda()
             lamb = 3
             kd_loss = KnowlegeDistilation(T=float(1)).cuda()
 
@@ -228,16 +228,19 @@ class Learning:
                     points, target = points.cuda(), target.cuda()
                     optimizer.zero_grad()
                     if lwf:
-                        classifier = classifier.eval()
+                        classifier.eval()
                     else:
-                        classifier = classifier.train()
+                        classifier.train()
                     pred, trans, trans_feat = classifier(points)
                     if lwf:
+                        new_model.train()
                         old_pred, new_pred, new_feat, trans_feat = new_model(points)
                         loss = point_loss(new_pred, target, trans_feat, self.opt.feature_transform)
                         kdl = kd_loss(old_pred, pred)
                         loss += kdl * lamb
+                        classifier_ = new_model
                     else:
+                        classifier_ = classifier
                         loss = point_loss(pred, target, trans_feat, self.opt.feature_transform)
                     loss.backward()
                     optimizer.step()
@@ -251,18 +254,18 @@ class Learning:
             pbar.close()
 
             if self.opt.test_epoch > 0 and (epoch + 1) % self.opt.test_epoch == 0 or (epoch + 1) == epochs:
-                test_loss[epoch], test_acc[epoch] = self.test(classifier, testdataloader)
+                test_loss[epoch], test_acc[epoch] = self.test(classifier_, testdataloader)
                 print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
                     epoch + 1, blue('test'), test_loss[epoch], test_acc[epoch]))
 
             if self.opt.save_after_epoch:
-                torch.save(classifier.state_dict(), '%s/cls_model_%d_%d.pth' % (self.save_dir, epoch, self.n_class))
+                torch.save(classifier_.state_dict(), '%s/cls_model_%d_%d.pth' % (self.save_dir, epoch, self.n_class))
 
         if self.opt.test_epoch > 0:
             np.save(f'{self.save_dir}/results/accuracy_cls{self.n_class}_{self.opt.learning_type}.npy', test_acc)
             np.save(f'{self.save_dir}/results/loss_cls{self.n_class}_{self.opt.learning_type}.npy', test_loss)
 
-        torch.save(classifier.state_dict(),
+        torch.save(classifier_.state_dict(),
                    '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
         if _fe:
             self.accuracies.append(test_acc[-1])

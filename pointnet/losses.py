@@ -27,5 +27,5 @@ class PointNetLoss(nn.Module):
         loss = F.nll_loss(pred, target)
         if feature_transform:
             mat_diff_loss = feature_transform_regularizer(trans_feat)
-            total_loss = loss + mat_diff_loss * self.mat_diff_loss_scale
-        return total_loss
+            loss += mat_diff_loss * self.mat_diff_loss_scale
+        return loss
