@@ -211,7 +211,6 @@ def translate_pointcloud(pointcloud):
 
 
 def download(root):
-    BASE_DIR = os.path.dirname(root)
     DATA_DIR = os.path.join(root, 'data')
     if not os.path.exists(DATA_DIR):
         os.mkdir(DATA_DIR)
@@ -225,7 +224,6 @@ def download(root):
 
 def load_data(root, partition):
     download(root)
-    BASE_DIR = os.path.dirname(root)
     DATA_DIR = os.path.join(root, 'data')
     all_data = []
     all_label = []
