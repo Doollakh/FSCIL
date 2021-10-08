@@ -215,6 +215,8 @@ class Learning:
             new_model = PointNetLwf(shared_model, k=len(dataset.classes)).cuda()
             lamb = 3
             kd_loss = KnowlegeDistilation(T=float(1)).cuda()
+            optimizer = optim.Adam(new_model.parameters(), lr=0.001, betas=(0.9, 0.999))
+            scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
 
         for epoch in range(epochs):
             scheduler.step()
@@ -295,9 +297,9 @@ class Learning:
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '--batchSize', type=int, default=16, help='input batch size')
+        '--batchSize', type=int, default=32, help='input batch size')
     parser.add_argument(
-        '--num_points', type=int, default=2500, help='input batch size')
+        '--num_points', type=int, default=1024, help='input batch size')
     parser.add_argument(
         '--workers', type=int, help='number of data loading workers', default=4)
     parser.add_argument(
@@ -319,7 +321,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, required=True, help="dataset path")
     parser.add_argument('--dataset_type', type=str, default='modelnet40', help="dataset type shapenet|modelnet40")
     parser.add_argument('--feature_transform', action='store_true', help="use feature transform")
-    parser.add_argument('--is_h5', type=bool, default=False,
+    parser.add_argument('--is_h5', type=bool, default=True,
                         help='is h5')
     parser.add_argument('--save_after_epoch', type=bool, default=False,
                         help='save model after each epoch')
@@ -328,7 +330,7 @@ if __name__ == '__main__':
     parser.add_argument('--exemplar_num', type=int, default=1, help='iif learning_type is exemplar')
     parser.add_argument('--continue_from', type=int, default=None, help='')
     parser.add_argument('--dir_pretrained', type=str, default='cls', help='load pretrained model')
-    parser.add_argument('--progress', type=bool, default=False,
+    parser.add_argument('--progress', type=bool, default=True,
                         help='has new progress?')
 
     opt = parser.parse_args()
