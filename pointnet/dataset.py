@@ -227,7 +227,8 @@ def load_data(root, partition):
     DATA_DIR = os.path.join(root, 'data')
     all_data = []
     all_label = []
-    for h5_name in glob.glob(os.path.join(DATA_DIR, 'modelnet40_ply_hdf5_2048', 'ply_data_%s*.h5' % partition)):
+    g = sorted(glob.glob(os.path.join(DATA_DIR, 'modelnet40_ply_hdf5_2048', 'ply_data_%s*.h5' % partition)))
+    for h5_name in g:
         f = h5py.File(h5_name)
         data = f['data'][:].astype('float32')
         label = f['label'][:].astype('int64')
