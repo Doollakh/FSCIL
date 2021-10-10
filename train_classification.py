@@ -62,7 +62,9 @@ class Learning:
                 flag = False
                 self.n_class += self.opt.step_num_class
                 if self.n_class > self.num_classes:
-                    np.save(f'{self.opt.learning_type}.npy', self.accuracies)
+                    num_exemplar = str(
+                        self.opt.exemplar_num) if _fe and not self.opt.learning_type == 'forgetting' else ''
+                    np.save(f'{self.opt.learning_type}{num_exemplar}.npy', self.accuracies)
                     break
 
     # 20, 25, 30, 35, 40
