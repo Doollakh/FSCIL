@@ -204,7 +204,7 @@ class PointNetLwf(nn.Module):
         new = F.relu(self.classifiers[1].bn1(self.classifiers[1].fc1(x)))
         new = F.relu(self.classifiers[1].bn2(self.classifiers[1].dropout(self.classifiers[1].fc2(new))))
         new = self.classifiers[1].fc3(new)
-        return F.log_softmax(old, dim=-1), F.log_softmax(new, dim=-1), feat, trans_feat
+        return F.log_softmax(old, dim=1), F.log_softmax(new, dim=1), feat, trans_feat
 
 
 class PointNetDenseCls(nn.Module):
@@ -237,7 +237,6 @@ class PointNetDenseCls(nn.Module):
 
 def feature_transform_regularizer(trans):
     d = trans.size()[1]
-    batchsize = trans.size()[0]
     I = torch.eye(d)[None, :, :]
     if trans.is_cuda:
         I = I.cuda()
