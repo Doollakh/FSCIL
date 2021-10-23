@@ -1,5 +1,4 @@
 from __future__ import print_function
-
 import argparse
 import copy
 import random
@@ -30,6 +29,7 @@ class Learning:
         self.classes = None
         self.except_samples = []
         self.accuracies = None
+        self.order = None
         self.num_classes = 0
 
     def start(self):
@@ -43,11 +43,12 @@ class Learning:
         if self.opt.continue_from is True:
             assert self.opt.learning_type != 'simple'
 
-        order = [2, 3, 4, 10, 14, 17, 19, 21, 22, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 39, 5, 16, 23, 25, 37, 9, 12,
-                 13, 20, 24, 0, 1, 6, 34, 38, 7, 8, 11, 15, 18]
+        self.order = [2, 3, 4, 10, 14, 17, 19, 21, 22, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 39, 5, 16, 23, 25, 37, 9,
+                      12,
+                      13, 20, 24, 0, 1, 6, 34, 38, 7, 8, 11, 15, 18]
         if self.opt.learning_type == "simple":
             self.classes = None
-            self.train(order, flag)
+            self.train(flag)
         else:
             self.n_class = opt.start_num_class
             self.classes = np.array([], dtype=int)
@@ -60,7 +61,7 @@ class Learning:
                 if self.opt.continue_from is not None:
                     skip = self.opt.continue_from > self.n_class
 
-                self.train(order, flag, _fe, skip, lwf)
+                self.train(flag, _fe, skip, lwf)
 
                 flag = False
                 self.n_class += self.opt.step_num_class
@@ -78,7 +79,7 @@ class Learning:
         temp = np.random.choice(len(r), size=count, replace=False)
         return r[temp]
 
-    def select_dataset(self, order):
+    def select_dataset(self):
         if self.opt.dataset_type == 'shapenet':
             dataset = ShapeNetDataset(
                 root=self.opt.dataset,
@@ -110,8 +111,8 @@ class Learning:
                 test_dataset = ModelNet40(root=self.opt.dataset, partition='test', num_points=self.opt.num_points)
 
             self.num_classes = len(dataset.classes)
-            dataset.set_order(order)
-            test_dataset.set_order(order)
+            dataset.set_order(self.order)
+            test_dataset.set_order(self.order)
 
         else:
             exit('wrong dataset type')
@@ -131,9 +132,9 @@ class Learning:
                 visited[item] += 1
         return visited_in[self.classes].reshape(len(self.classes) * n)
 
-    def train(self, order, flag=False, _fe=False, skip=False, lwf=False):
+    def train(self, flag=False, _fe=False, skip=False, lwf=False):
 
-        dataset, test_dataset = self.select_dataset(order)
+        dataset, test_dataset = self.select_dataset()
 
         if self.classes is not None:
             if flag:
@@ -195,6 +196,9 @@ class Learning:
         optimizer = optim.Adam(classifier.parameters(), lr=0.001, betas=(0.9, 0.999))
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
         classifier.cuda()
+
+        if _fe:
+            self.compute_best_samples(classifier.feat)
 
         if flag:
             print(str(classifier))
@@ -300,6 +304,49 @@ class Learning:
             total_testset += points.size()[0]
 
         return total_loss / float(total_testset), total_correct / float(total_testset)
+
+    def compute_best_samples(self, classifier):
+        if self.opt.learning_type == 'bExemplar':
+            best_exemplar = Path('utils/best_exemplar.npy')
+            if not best_exemplar.exists():
+                dataset, _ = self.select_dataset()
+                loader = torch.utils.data.DataLoader(
+                    dataset,
+                    batch_size=self.opt.batchSize,
+                    shuffle=False,
+                    num_workers=int(self.opt.workers))
+                self._compute_best_samples(classifier, loader, best_exemplar)
+
+    @staticmethod
+    def _compute_best_samples(classifier, dataloader, best_exemplar):
+        print('computing best samples...')
+        for i, data in tqdm(enumerate(dataloader, 0)):
+            points, target = data
+            points = points.transpose(2, 1)
+            points, target = points.cuda(), target.cuda()
+            classifier = classifier.eval()
+            pred, _, _ = classifier(points)
+            X = np.concatenate((X, pred.cpu().detach().numpy()), 0) if i != 0 else pred.cpu().detach().numpy()
+            y = np.concatenate((y, target.cpu().detach().numpy()), 0) if i != 0 else target.cpu().detach().numpy()
+
+        cos = lambda in1, in2: np.dot(in1, in2) / (np.linalg.norm(in1) * np.linalg.norm(in2))
+
+        uniq = np.unique(y, return_counts=True)[1]
+        max_s = np.max(uniq)
+        results = np.zeros((40, max_s), dtype=int)
+        # avg = np.zeros((40, 1024))
+        for i in range(40):
+            w = np.where(y == i)[0]
+            cX = X[w]
+            n = len(cX)
+            r = np.zeros(n)
+            avg = np.average(cX, axis=0)
+            for j, item in enumerate(cX):
+                r[j] = cos(avg, item)
+            args = np.argsort(r)[::-1][:n]
+            results[i, 0:n] = w[args]
+
+        np.save(best_exemplar, results)
 
 
 if __name__ == '__main__':
