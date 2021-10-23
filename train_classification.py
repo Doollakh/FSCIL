@@ -173,7 +173,7 @@ class Learning:
         except OSError:
             pass
 
-        classifier = PointNetCls(k=20, feature_transform=self.opt.feature_transform)
+        classifier = PointNetCls(k=self.n_class, feature_transform=self.opt.feature_transform)
 
         epochs = opt.nepoch
         if _fe and not flag:
