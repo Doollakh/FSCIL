@@ -265,6 +265,7 @@ class ModelNet40(data.Dataset):
         print(self.classes)
 
     def set_order(self, order):
+        self.classes = [self.classes[i] for i in order]
         self.label = self._map_new_class_index(self.label, order)
 
     @staticmethod
