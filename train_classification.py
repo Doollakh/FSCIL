@@ -43,12 +43,15 @@ class Learning:
         if self.opt.continue_from is True:
             assert self.opt.learning_type != 'simple'
 
+        order = [2, 3, 4, 10, 14, 17, 19, 21, 22, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 39, 5, 16, 23, 25, 37, 9, 12,
+                 13, 20, 24, 0, 1, 6, 34, 38, 7, 8, 11, 15, 18]
         if self.opt.learning_type == "simple":
             self.classes = None
-            self.train(flag)
+            self.train(order, flag)
         else:
             self.n_class = opt.start_num_class
             self.classes = np.array([], dtype=int)
+
             self.accuracies = []
 
             while True:
@@ -57,7 +60,7 @@ class Learning:
                 if self.opt.continue_from is not None:
                     skip = self.opt.continue_from > self.n_class
 
-                self.train(flag, _fe, skip, lwf)
+                self.train(order, flag, _fe, skip, lwf)
 
                 flag = False
                 self.n_class += self.opt.step_num_class
@@ -75,7 +78,7 @@ class Learning:
         temp = np.random.choice(len(r), size=count, replace=False)
         return r[temp]
 
-    def select_dataset(self):
+    def select_dataset(self, order):
         if self.opt.dataset_type == 'shapenet':
             dataset = ShapeNetDataset(
                 root=self.opt.dataset,
@@ -107,6 +110,8 @@ class Learning:
                 test_dataset = ModelNet40(root=self.opt.dataset, partition='test', num_points=self.opt.num_points)
 
             self.num_classes = len(dataset.classes)
+            dataset.set_order(order)
+            test_dataset.set_order(order)
 
         else:
             exit('wrong dataset type')
@@ -126,14 +131,14 @@ class Learning:
                 visited[item] += 1
         return visited_in[self.classes].reshape(len(self.classes) * n)
 
-    def train(self, flag=False, _fe=False, skip=False, lwf=False):
+    def train(self, order, flag=False, _fe=False, skip=False, lwf=False):
 
-        dataset, test_dataset = self.select_dataset()
+        dataset, test_dataset = self.select_dataset(order)
 
         if self.classes is not None:
             if flag:
-                temp = self.rand_choice(self.num_classes, self.n_class)
-                self.classes = np.concatenate((self.classes, temp))
+                # temp = self.rand_choice(self.num_classes, self.n_class)
+                self.classes = np.arange(self.n_class)
                 dataset.filter(self.classes)
                 test_dataset.filter(self.classes)
             else:
@@ -142,8 +147,8 @@ class Learning:
                 if self.opt.learning_type == 'bExemplar':
                     self.except_samples = self.find_best_samples(self.opt.exemplar_num)
                     print('old_samples: ', self.except_samples)
-                temp = self.rand_choice(self.num_classes, self.opt.step_num_class)
-                self.classes = np.concatenate((self.classes, temp))
+                self.classes = np.arange(self.n_class)
+                temp = self.classes[-self.opt.step_num_class:]
                 if _fe:
                     dataset.filter(temp, self.except_samples)
                     test_dataset.filter(self.classes)
@@ -168,7 +173,7 @@ class Learning:
         except OSError:
             pass
 
-        classifier = PointNetCls(k=self.num_classes, feature_transform=self.opt.feature_transform)
+        classifier = PointNetCls(k=20, feature_transform=self.opt.feature_transform)
 
         epochs = opt.nepoch
         if _fe and not flag:
@@ -227,7 +232,7 @@ class Learning:
             for i, data in enumerate(dataloader, 0):
                 points, target = data
                 if len(points) != 1:
-                    target = target[:, 0]
+                    # target = target[:, 0]
                     points.transpose_(2, 1)
                     points, target = points.cuda(), target.cuda()
                     optimizer.zero_grad()
@@ -263,7 +268,8 @@ class Learning:
                     epoch + 1, blue('test'), test_loss[epoch], test_acc[epoch]))
 
             if self.opt.save_after_epoch:
-                torch.save(classifier_.feat.state_dict(), '%s/cls_model_%d_%d.pth' % (self.save_dir, epoch, self.n_class))
+                torch.save(classifier_.feat.state_dict(),
+                           '%s/cls_model_%d_%d.pth' % (self.save_dir, epoch, self.n_class))
 
         if self.opt.test_epoch > 0:
             np.save(f'{self.save_dir}/results/accuracy_cls{self.n_class}_{self.opt.learning_type}.npy', test_acc)
@@ -281,7 +287,7 @@ class Learning:
         total_testset = 0
         for i, data in tqdm(enumerate(testdataloader, 0)):
             points, target = data
-            target = target[:, 0]
+            # target = target[:, 0]
             points.transpose_(2, 1)
             points, target = points.cuda(), target.cuda()
             classifier = classifier.eval()

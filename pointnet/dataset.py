@@ -264,6 +264,14 @@ class ModelNet40(data.Dataset):
         self.classes = [c for i, c in enumerate(self.classes) if i in classes]
         print(self.classes)
 
+    def set_order(self, order):
+        self.label = self._map_new_class_index(self.label, order)
+
+    @staticmethod
+    def _map_new_class_index(y, order):
+        """Transforms targets for new class order."""
+        return np.array(list(map(lambda x: order.index(x), y)), dtype=np.int64)
+
     def __getitem__(self, item):
         pointcloud = self.data[item][:self.num_points]
         label = self.label[item]
