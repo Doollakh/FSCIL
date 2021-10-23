@@ -176,11 +176,11 @@ class Learning:
 
         if skip:
             print('loading previous model')
-            classifier.load_state_dict(
+            classifier.feat.load_state_dict(
                 torch.load('%s/cls_model_%s_%d.pth' % (self.opt.dir_pretrained, self.opt.learning_type, self.n_class)))
         elif _fe and not flag:
             print('loading previous model')
-            classifier.load_state_dict(
+            classifier.feat.load_state_dict(
                 torch.load('%s/cls_model_%s_%d.pth' % (
                     self.save_dir, self.opt.learning_type, self.n_class - self.opt.step_num_class)))
 
@@ -207,7 +207,7 @@ class Learning:
             self.accuracies.append(test_acc[-1])
             print('%s loss: %f accuracy: %f\n' % (blue('test'), test_loss[-1], test_acc[-1]))
             print()
-            torch.save(classifier.state_dict(),
+            torch.save(classifier.feat.state_dict(),
                        '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
             return
 
@@ -263,13 +263,13 @@ class Learning:
                     epoch + 1, blue('test'), test_loss[epoch], test_acc[epoch]))
 
             if self.opt.save_after_epoch:
-                torch.save(classifier_.state_dict(), '%s/cls_model_%d_%d.pth' % (self.save_dir, epoch, self.n_class))
+                torch.save(classifier_.feat.state_dict(), '%s/cls_model_%d_%d.pth' % (self.save_dir, epoch, self.n_class))
 
         if self.opt.test_epoch > 0:
             np.save(f'{self.save_dir}/results/accuracy_cls{self.n_class}_{self.opt.learning_type}.npy', test_acc)
             np.save(f'{self.save_dir}/results/loss_cls{self.n_class}_{self.opt.learning_type}.npy', test_loss)
 
-        torch.save(classifier_.state_dict(),
+        torch.save(classifier_.feat.state_dict(),
                    '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
         if _fe:
             self.accuracies.append(test_acc[-1])
