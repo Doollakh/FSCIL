@@ -219,6 +219,8 @@ class Learning:
             print()
             torch.save(classifier.feat.state_dict(),
                        '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
+            if lwf:
+                self.old_model = classifier.copy().freeze()
             return
 
         point_loss = PointNetLoss().cuda()
