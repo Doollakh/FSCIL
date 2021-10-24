@@ -363,7 +363,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--dist_temperature', type=int, default=1, help='distillation temperature')
     parser.add_argument(
-        '--dist_factor', type=int, default=0.4, help='distillation factor')
+        '--dist_factor', type=float, default=0.4, help='distillation factor')
     parser.add_argument('--outf', type=str, default='cls', help='output folder')
     parser.add_argument('--name', default='exp', help='save results to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
