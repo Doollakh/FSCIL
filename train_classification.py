@@ -242,7 +242,7 @@ class Learning:
                     if lwf and not flag:
                         old_model.eval()
                         old_pred, _, _ = old_model(points)
-                        kdl = kd_loss(old_pred, pred)
+                        kdl = kd_loss(pred, old_pred)
                         loss += kdl * self.opt.dist_factor
                     loss.backward()
                     optimizer.step()
