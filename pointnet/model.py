@@ -1,4 +1,5 @@
 from __future__ import print_function
+import copy
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -150,6 +151,13 @@ class PointNetCls(nn.Module):
         x, trans, trans_feat = self.feat(x)
         return F.log_softmax(self.fc3(x), dim=1), trans, trans_feat
 
+    def copy(self):
+        return copy.deepcopy(self)
+
+    def freeze(self):
+        for param in self.parameters():
+            param.requires_grad = False
+        return self
 
 def init_weights(m):
     if type(m) == nn.Linear:

@@ -221,13 +221,9 @@ class Learning:
             return
 
         point_loss = PointNetLoss().cuda()
-        if lwf:
-            shared_model = copy.deepcopy(classifier)
-            new_model = PointNetLwf(shared_model, k=len(dataset.classes)).cuda()
-            lamb = 3
-            kd_loss = KnowlegeDistilation(T=float(1)).cuda()
-            optimizer = optim.Adam(new_model.parameters(), lr=0.001, betas=(0.9, 0.999))
-            scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
+        if lwf and not flag:
+            old_model = classifier.copy().freeze()
+            kd_loss = KnowlegeDistilation(T=float(self.opt.dist_temperature)).cuda()
 
         for epoch in range(epochs):
             scheduler.step()
@@ -240,21 +236,14 @@ class Learning:
                     points.transpose_(2, 1)
                     points, target = points.cuda(), target.cuda()
                     optimizer.zero_grad()
-                    if lwf:
-                        classifier.eval()
-                    else:
-                        classifier.train()
-                    pred, trans, trans_feat = classifier(points)
-                    if lwf:
-                        new_model.train()
-                        old_pred, new_pred, new_feat, trans_feat = new_model(points)
-                        loss = point_loss(new_pred, target, trans_feat, self.opt.feature_transform)
+                    classifier.train()
+                    pred, _, trans_feat = classifier(points)
+                    loss = point_loss(pred, target, trans_feat, self.opt.feature_transform)
+                    if lwf and not flag:
+                        old_model.eval()
+                        old_pred, _, _ = old_model(points)
                         kdl = kd_loss(old_pred, pred)
-                        loss += kdl * lamb
-                        classifier_ = new_model
-                    else:
-                        classifier_ = classifier
-                        loss = point_loss(pred, target, trans_feat, self.opt.feature_transform)
+                        loss += kdl * self.opt.dist_factor
                     loss.backward()
                     optimizer.step()
                     pred_choice = pred.data.max(1)[1]
@@ -262,24 +251,27 @@ class Learning:
 
                 pbar.update(1)
                 acc = round(correct.item() / float(self.opt.batchSize), 2)
-                pbar.postfix = f'loss: {round(loss.item(), 2)}, acc: {acc}'
+                if lwf and not flag:
+                    pbar.postfix = f'loss: {round(loss.item(), 2)}, acc: {acc}, kd_loss: {round(kdl.item(), 2)}'
+                else:
+                    pbar.postfix = f'loss: {round(loss.item(), 2)}, acc: {acc}'
 
             pbar.close()
 
             if self.opt.test_epoch > 0 and (epoch + 1) % self.opt.test_epoch == 0 or (epoch + 1) == epochs:
-                test_loss[epoch], test_acc[epoch] = self.test(classifier_, testdataloader)
+                test_loss[epoch], test_acc[epoch] = self.test(classifier, testdataloader)
                 print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
                     epoch + 1, blue('test'), test_loss[epoch], test_acc[epoch]))
 
             if self.opt.save_after_epoch:
-                torch.save(classifier_.feat.state_dict(),
+                torch.save(classifier.feat.state_dict(),
                            '%s/cls_model_%d_%d.pth' % (self.save_dir, epoch, self.n_class))
 
         if self.opt.test_epoch > 0:
             np.save(f'{self.save_dir}/results/accuracy_cls{self.n_class}_{self.opt.learning_type}.npy', test_acc)
             np.save(f'{self.save_dir}/results/loss_cls{self.n_class}_{self.opt.learning_type}.npy', test_loss)
 
-        torch.save(classifier_.feat.state_dict(),
+        torch.save(classifier.feat.state_dict(),
                    '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
         if _fe:
             self.accuracies.append(test_acc[-1])
@@ -361,14 +353,17 @@ if __name__ == '__main__':
         '--nepoch', type=int, default=250, help='number of epochs to train for')
     parser.add_argument(
         '--learning_type', type=str, default='simple', help='')
-    parser.add_argument('--lwf', type=bool, default=False,
-                        help='is lwf')
+    parser.add_argument('--lwf', action='store_true', help='is lwf')
     parser.add_argument(
         '--start_num_class', type=int, help='', default=20)
     parser.add_argument(
         '--step_num_class', type=int, help='', default=5)
     parser.add_argument(
         '--manualSeed', type=int, help='', default=1)
+    parser.add_argument(
+        '--dist_temperature', type=int, default=1, help='distillation temperature')
+    parser.add_argument(
+        '--dist_factor', type=int, default=0.4, help='distillation factor')
     parser.add_argument('--outf', type=str, default='cls', help='output folder')
     parser.add_argument('--name', default='exp', help='save results to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
