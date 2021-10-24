@@ -31,6 +31,7 @@ class Learning:
         self.accuracies = None
         self.order = None
         self.num_classes = 0
+        self.old_model = None
 
     def start(self):
 
@@ -222,7 +223,6 @@ class Learning:
 
         point_loss = PointNetLoss().cuda()
         if lwf and not flag:
-            old_model = classifier.copy().freeze()
             kd_loss = KnowlegeDistilation(T=float(self.opt.dist_temperature)).cuda()
 
         for epoch in range(epochs):
@@ -240,8 +240,8 @@ class Learning:
                     pred, _, trans_feat = classifier(points)
                     loss = point_loss(pred, target, trans_feat, self.opt.feature_transform)
                     if lwf and not flag:
-                        old_model.eval()
-                        old_pred, _, _ = old_model(points)
+                        self.old_model.eval()
+                        old_pred, _, _ = self.old_model(points)
                         kdl = kd_loss(pred, old_pred)
                         loss += kdl * self.opt.dist_factor
                     loss.backward()
@@ -273,6 +273,10 @@ class Learning:
 
         torch.save(classifier.feat.state_dict(),
                    '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
+
+        if lwf:
+            self.old_model = classifier.copy().freeze()
+
         if _fe:
             self.accuracies.append(test_acc[-1])
 
