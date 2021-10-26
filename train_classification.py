@@ -173,7 +173,12 @@ class Learning:
         except OSError:
             pass
 
-        classifier = PointNetCls(k=self.n_class, feature_transform=self.opt.feature_transform)
+        if lwf and not flag:
+            classifier = PointNetCls(k=self.n_class - self.opt.step_num_class,
+                                     feature_transform=self.opt.feature_transform)
+            # todo save classifier after first task and save new_model and second task
+        else:
+            classifier = PointNetCls(k=self.n_class, feature_transform=self.opt.feature_transform)
 
         epochs = opt.nepoch
         if _fe and not flag:
@@ -223,7 +228,9 @@ class Learning:
         if lwf and not flag:
             kd_loss = KnowlegeDistilation(T=float(self.opt.dist_temperature)).cuda()
             shared_model = classifier.copy()
-            new_model = PointNetLwf(shared_model, old_k=self.n_class, new_k=self.opt.step_num_class)
+            new_model = PointNetLwf(shared_model, old_k=self.n_class - self.opt.step_num_class,
+                                    new_k=self.opt.step_num_class).cuda()
+            print(new_model)
 
         for epoch in range(epochs):
             scheduler.step()
@@ -247,7 +254,9 @@ class Learning:
                         loss = point_loss(new_pred, target, trans_feat, self.opt.feature_transform)
                         kdl = kd_loss(pred, old_pred)
                         loss += kdl * self.opt.dist_factor
+                        classifier_ = new_model
                     else:
+                        classifier_ = classifier
                         loss = point_loss(pred, target, trans_feat, self.opt.feature_transform)
 
                     loss.backward()
@@ -265,26 +274,26 @@ class Learning:
             pbar.close()
 
             if self.opt.test_epoch > 0 and (epoch + 1) % self.opt.test_epoch == 0 or (epoch + 1) == epochs:
-                test_loss[epoch], test_acc[epoch] = self.test(classifier, testdataloader)
+                test_loss[epoch], test_acc[epoch] = self.test(classifier_, testdataloader, lwf and not flag)
                 print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
                     epoch + 1, blue('test'), test_loss[epoch], test_acc[epoch]))
 
             if self.opt.save_after_epoch:
-                torch.save(classifier.feat.state_dict(),
+                torch.save(classifier_.feat.state_dict(),
                            '%s/cls_model_%d_%d.pth' % (self.save_dir, epoch, self.n_class))
 
         if self.opt.test_epoch > 0:
             np.save(f'{self.save_dir}/results/accuracy_cls{self.n_class}_{self.opt.learning_type}.npy', test_acc)
             np.save(f'{self.save_dir}/results/loss_cls{self.n_class}_{self.opt.learning_type}.npy', test_loss)
 
-        torch.save(classifier.feat.state_dict(),
+        torch.save(classifier_.feat.state_dict(),
                    '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
 
         if _fe:
             self.accuracies.append(test_acc[-1])
 
     @staticmethod
-    def test(classifier, testdataloader):
+    def test(classifier, testdataloader, lwf):
         total_loss = 0
         total_correct = 0
         total_testset = 0
@@ -294,7 +303,11 @@ class Learning:
             points.transpose_(2, 1)
             points, target = points.cuda(), target.cuda()
             classifier = classifier.eval()
-            pred, _, _ = classifier(points)
+            if not lwf:
+                pred, _, _ = classifier(points)
+            else:
+                _, pred, _, _ = classifier(points)
+
             pred_choice = pred.data.max(1)[1]
             correct = pred_choice.eq(target.data).cpu().sum()
             loss = F.nll_loss(pred, target)
