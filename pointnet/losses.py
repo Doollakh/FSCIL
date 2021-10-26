@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from pointnet.model import feature_transform_regularizer
+from utils.general import to_onehot
 
 
 class KnowlegeDistilation(nn.Module):
@@ -10,12 +11,9 @@ class KnowlegeDistilation(nn.Module):
         super(KnowlegeDistilation, self).__init__()
         self.T = T
 
-    def forward(self, out_s, out_t, t_size=5):
-        # t_p = out_t[..., :-t_size]
-        s_p = out_s[..., :-t_size]
-
-        loss = F.kl_div(F.log_softmax(out_t / self.T, dim=1),
-                        F.softmax(s_p / self.T, dim=1),
+    def forward(self, out_s, out_t):
+        loss = F.kl_div(F.log_softmax(out_s / self.T, dim=1),
+                        F.softmax(out_t / self.T, dim=1),
                         reduction='batchmean') * self.T * self.T
 
         return loss

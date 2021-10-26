@@ -31,7 +31,6 @@ class Learning:
         self.accuracies = None
         self.order = None
         self.num_classes = 0
-        self.old_model = None
 
     def start(self):
 
@@ -218,13 +217,13 @@ class Learning:
             print()
             torch.save(classifier.feat.state_dict(),
                        '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
-            if lwf:
-                self.old_model = classifier.copy().freeze()
             return
 
         point_loss = PointNetLoss().cuda()
         if lwf and not flag:
             kd_loss = KnowlegeDistilation(T=float(self.opt.dist_temperature)).cuda()
+            shared_model = classifier.copy()
+            new_model = PointNetLwf(shared_model, k=self.n_class)
 
         for epoch in range(epochs):
             scheduler.step()
@@ -237,14 +236,20 @@ class Learning:
                     points.transpose_(2, 1)
                     points, target = points.cuda(), target.cuda()
                     optimizer.zero_grad()
-                    classifier.train()
-                    pred, _, trans_feat = classifier(points)
-                    loss = point_loss(pred, target, trans_feat, self.opt.feature_transform)
                     if lwf and not flag:
-                        self.old_model.eval()
-                        old_pred, _, _ = self.old_model(points)
+                        classifier.eval()
+                    else:
+                        classifier.train()
+                    pred, _, _ = classifier(points)
+                    if lwf and not flag:
+                        new_model.train()
+                        old_pred, new_pred, _, trans_feat = new_model(points)
+                        loss = point_loss(new_pred, target, trans_feat, self.opt.feature_transform)
                         kdl = kd_loss(pred, old_pred)
                         loss += kdl * self.opt.dist_factor
+                    else:
+                        loss = point_loss(pred, target, trans_feat, self.opt.feature_transform)
+
                     loss.backward()
                     optimizer.step()
                     pred_choice = pred.data.max(1)[1]
@@ -274,9 +279,6 @@ class Learning:
 
         torch.save(classifier.feat.state_dict(),
                    '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
-
-        if lwf:
-            self.old_model = classifier.copy().freeze()
 
         if _fe:
             self.accuracies.append(test_acc[-1])
@@ -378,7 +380,7 @@ if __name__ == '__main__':
     parser.add_argument('--feature_transform', action='store_true', help="use feature transform")
     parser.add_argument('--is_h5', type=bool, default=True,
                         help='is h5')
-    parser.add_argument('--save_after_epoch', type=bool, default=False,
+    parser.add_argument('--save_after_epoch',  action='store_true',
                         help='save model after each epoch')
     parser.add_argument('--test_epoch', type=int, default=1,
                         help='1 for all epochs, 0 for last epoch, n for each n epoch')
