@@ -3,7 +3,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from pointnet.model import feature_transform_regularizer
-from utils.general import to_onehot
 
 
 class KnowlegeDistilation(nn.Module):

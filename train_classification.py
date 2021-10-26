@@ -223,7 +223,7 @@ class Learning:
         if lwf and not flag:
             kd_loss = KnowlegeDistilation(T=float(self.opt.dist_temperature)).cuda()
             shared_model = classifier.copy()
-            new_model = PointNetLwf(shared_model, k=self.n_class)
+            new_model = PointNetLwf(shared_model, old_k=self.n_class, new_k=self.opt.step_num_class)
 
         for epoch in range(epochs):
             scheduler.step()
@@ -380,7 +380,7 @@ if __name__ == '__main__':
     parser.add_argument('--feature_transform', action='store_true', help="use feature transform")
     parser.add_argument('--is_h5', type=bool, default=True,
                         help='is h5')
-    parser.add_argument('--save_after_epoch',  action='store_true',
+    parser.add_argument('--save_after_epoch', action='store_true',
                         help='save model after each epoch')
     parser.add_argument('--test_epoch', type=int, default=1,
                         help='1 for all epochs, 0 for last epoch, n for each n epoch')
