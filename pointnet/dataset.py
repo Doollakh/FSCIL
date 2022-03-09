@@ -242,7 +242,7 @@ def load_data(root, partition):
 
 
 class ModelNet40(data.Dataset):
-    def __init__(self, root, num_points, partition='train'):
+    def __init__(self, root, num_points, partition='train', few=None):
         self.data, self.label = load_data(root, partition)
         self.num_points = num_points
         self.partition = partition
@@ -254,6 +254,25 @@ class ModelNet40(data.Dataset):
                 self.cat[ls[0]] = int(ls[1])
 
         self.classes = list(self.cat.keys())
+
+        if partition == 'train' and few is not None:
+            order = np.array(
+                [2, 3, 4, 10, 14, 17, 19, 21, 22, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 39, 5, 16, 23, 25, 37, 9, 12,
+                 13, 20, 24, 0, 1, 6, 34, 38, 7, 8, 11, 15, 18])
+            o = order[20:]
+            ids = []
+            c = np.zeros(40)
+            for i, j in enumerate(self.label):
+                if j in o:
+                    if c[j] < few:
+                        ids.append(i)
+                        c[j] += 1
+                else:
+                    ids.append(i)
+
+            self.data = self.data[ids]
+            self.label = self.label[ids]
+            print(np.unique(self.label, return_counts=True))
 
     def filter(self, classes, except_samples=None):
         if except_samples is None:

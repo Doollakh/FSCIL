@@ -10,6 +10,7 @@ import torch.nn.functional as F
 import torch.nn.parallel
 import torch.optim as optim
 import torch.utils.data
+from matplotlib import pyplot as plt
 from tqdm import tqdm
 
 from pointnet.dataset import ShapeNetDataset, ModelNetDataset, ModelNet40
@@ -18,6 +19,7 @@ from pointnet.model import PointNetCls, PointNetLwf
 # learning_type = simple, joint, exemplar, lwf, bExemplar
 # forgetting
 from utils.general import increment_path
+from utils.plotcm import plot_confusion_matrix
 
 
 class Learning:
@@ -105,9 +107,11 @@ class Learning:
                     data_augmentation=False)
 
             else:
-                dataset = ModelNet40(root=self.opt.dataset, partition='train', num_points=self.opt.num_points)
+                few = self.opt.few_shots if self.opt.f is not None else None
+                dataset = ModelNet40(root=self.opt.dataset, partition='train', num_points=self.opt.num_points, few=few)
 
-                test_dataset = ModelNet40(root=self.opt.dataset, partition='test', num_points=self.opt.num_points)
+                test_dataset = ModelNet40(root=self.opt.dataset, partition='test', num_points=self.opt.num_points,
+                                          few=None)
 
             self.num_classes = len(dataset.classes)
             dataset.set_order(self.order)
@@ -216,7 +220,7 @@ class Learning:
         test_loss = np.zeros(epochs)
         if skip:
             print('skipping this stage ...')
-            test_loss[-1], test_acc[-1] = self.test(classifier, testdataloader, False)
+            test_loss[-1], test_acc[-1] = self.test(classifier, testdataloader, False, self.n_class)
             self.accuracies.append(test_acc[-1])
             print('%s loss: %f accuracy: %f\n' % (blue('test'), test_loss[-1], test_acc[-1]))
             print()
@@ -247,7 +251,7 @@ class Learning:
                         classifier.eval()
                     else:
                         classifier.train()
-                    pred, _, _ = classifier(points)
+                    pred, _, trans_feat = classifier(points)
                     if lwf and not flag:
                         new_model.train()
                         old_pred, new_pred, _, trans_feat = new_model(points)
@@ -274,7 +278,8 @@ class Learning:
             pbar.close()
 
             if self.opt.test_epoch > 0 and (epoch + 1) % self.opt.test_epoch == 0 or (epoch + 1) == epochs:
-                test_loss[epoch], test_acc[epoch] = self.test(classifier_, testdataloader, lwf and not flag)
+                test_loss[epoch], test_acc[epoch] = self.test(classifier_, testdataloader, lwf and not flag,
+                                                              self.n_class)
                 print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
                     epoch + 1, blue('test'), test_loss[epoch], test_acc[epoch]))
 
@@ -293,7 +298,8 @@ class Learning:
             self.accuracies.append(test_acc[-1])
 
     @staticmethod
-    def test(classifier, testdataloader, lwf):
+    def test(classifier, testdataloader, lwf, n_class):
+        cmt = torch.zeros(n_class, n_class, dtype=torch.int64)
         total_loss = 0
         total_correct = 0
         total_testset = 0
@@ -310,10 +316,16 @@ class Learning:
 
             pred_choice = pred.data.max(1)[1]
             correct = pred_choice.eq(target.data).cpu().sum()
+            stacked = torch.stack((target.data, pred_choice), dim=1).cpu()
+            for p in stacked:
+                tl, pl = p.tolist()
+                cmt[tl, pl] = cmt[tl, pl] + 1
             loss = F.nll_loss(pred, target)
             total_loss += loss.item()
             total_correct += correct.item()
             total_testset += points.size()[0]
+        plt.figure(figsize=(10, 10))
+        plot_confusion_matrix(cmt, np.arange(n_class))
 
         return total_loss / float(total_testset), total_correct / float(total_testset)
 
@@ -387,6 +399,9 @@ if __name__ == '__main__':
     parser.add_argument('--outf', type=str, default='cls', help='output folder')
     parser.add_argument('--name', default='exp', help='save results to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
+    parser.add_argument('--f', action='store_true', help='')
+    parser.add_argument(
+        '--few_shots', type=int, default=5, help='')
     parser.add_argument('--model', type=str, default='', help='model path')
     parser.add_argument('--dataset', type=str, required=True, help="dataset path")
     parser.add_argument('--dataset_type', type=str, default='modelnet40', help="dataset type shapenet|modelnet40")
