@@ -38,7 +38,9 @@ class Learning:
 
         _fe = self.opt.learning_type == 'forgetting' \
               or self.opt.learning_type == 'exemplar' \
-              or self.opt.learning_type == 'bExemplar'
+              or self.opt.learning_type == 'bExemplar' \
+              or self.opt.learning_type == 'bCandidate'
+
         lwf = False if not _fe else self.opt.lwf
         assert (self.opt.exemplar_num is not None and self.opt.exemplar_num > 0)
         flag = True
@@ -81,19 +83,7 @@ class Learning:
         return r[temp]
 
     def select_dataset(self):
-        if self.opt.dataset_type == 'shapenet':
-            dataset = ShapeNetDataset(
-                root=self.opt.dataset,
-                classification=True,
-                npoints=self.opt.num_points)
-
-            test_dataset = ShapeNetDataset(
-                root=self.opt.dataset,
-                classification=True,
-                split='test',
-                npoints=self.opt.num_points,
-                data_augmentation=False)
-        elif self.opt.dataset_type == 'modelnet40':
+        if self.opt.dataset_type == 'modelnet40':
             if not self.opt.is_h5:
                 dataset = ModelNetDataset(
                     root=self.opt.dataset,
@@ -107,8 +97,9 @@ class Learning:
                     data_augmentation=False)
 
             else:
-                few = self.opt.few_shots if self.opt.f is not None else None
-                dataset = ModelNet40(root=self.opt.dataset, partition='train', num_points=self.opt.num_points, few=few)
+                few = self.opt.few_shots if self.opt.f else None
+                dataset = ModelNet40(root=self.opt.dataset, partition='train', num_points=self.opt.num_points, few=few
+                                     , from_candidates=self.opt.learning_type == 'bCandidate')
 
                 test_dataset = ModelNet40(root=self.opt.dataset, partition='test', num_points=self.opt.num_points,
                                           few=None)
@@ -151,10 +142,16 @@ class Learning:
                 if self.opt.learning_type == 'bExemplar':
                     self.except_samples = self.find_best_samples(self.opt.exemplar_num)
                     print('old_samples: ', self.except_samples)
+
                 self.classes = np.arange(self.n_class)
                 temp = self.classes[-self.opt.step_num_class:]
                 if _fe:
-                    dataset.filter(temp, self.except_samples)
+                    cand_ids = None
+                    if self.opt.learning_type == 'bCandidate':
+                        cand_ids = np.arange(1, 105, step=3)[:len(self.classes)-self.opt.step_num_class]
+                        print('cand_ids: ', cand_ids)
+
+                    dataset.filter(temp, self.except_samples, cand_ids)
                     test_dataset.filter(self.classes)
                 else:
                     dataset.filter(self.classes)
@@ -325,7 +322,7 @@ class Learning:
             total_correct += correct.item()
             total_testset += points.size()[0]
         plt.figure(figsize=(10, 10))
-        plot_confusion_matrix(cmt, np.arange(n_class))
+        # plot_confusion_matrix(cmt, np.arange(n_class))
 
         return total_loss / float(total_testset), total_correct / float(total_testset)
 

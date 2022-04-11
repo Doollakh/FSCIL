@@ -12,6 +12,31 @@ import glob
 import h5py
 
 
+def read_ply(filename):
+    plydata = PlyData.read(filename)
+    pc = plydata['vertex'].data
+    pc_array = np.array([[x, y, z] for x, y, z in pc])
+    return pc_array
+
+
+def read_candidates(root, n_cands=3):
+    root = os.path.join(root, 'data/cands')
+    classes = ['bed', 'bench', 'bookshelf', 'cup', 'dresser', 'guitar', 'lamp', 'mantel', 'monitor', 'plant', 'radio',
+               'range_hood', 'sink', 'sofa', 'stairs', 'stool', 'table', 'toilet', 'tv_stand', 'xbox', 'bottle',
+               'glass_box', 'night_stand', 'piano', 'vase', 'cone', 'desk', 'door', 'laptop', 'person', 'airplane',
+               'bathtub', 'bowl', 'tent', 'wardrobe']
+    n = len(classes)
+    data = np.zeros(shape=(n * n_cands, 2048, 3))
+    for j, c in enumerate(classes):
+        for i in range(n_cands):
+            filename = f'{root}/{c}_{i}.ply'
+            # read filename.ply to numpy array
+            plydata = read_ply(filename)
+            data[j * n_cands + i, :1024, :] = plydata
+
+    return data, np.arange(3, n * n_cands) // 3
+
+
 def get_segmentation_classes(root):
     catfile = os.path.join(root, 'synsetoffset2category.txt')
     cat = {}
@@ -211,23 +236,22 @@ def translate_pointcloud(pointcloud):
 
 
 def download(root):
-    DATA_DIR = os.path.join(root, 'data')
-    if not os.path.exists(DATA_DIR):
-        os.mkdir(DATA_DIR)
-    if not os.path.exists(os.path.join(DATA_DIR, 'modelnet40_ply_hdf5_2048')):
+    if not os.path.exists(root):
+        os.mkdir(root)
+    if not os.path.exists(os.path.join(root, 'modelnet40_ply_hdf5_2048')):
         www = 'https://shapenet.cs.stanford.edu/media/modelnet40_ply_hdf5_2048.zip'
         zipfile = os.path.basename(www)
         os.system('wget --no-check-certificate %s; unzip %s' % (www, zipfile))
-        os.system('mv %s %s' % (zipfile[:-4], DATA_DIR))
+        os.system('mv %s %s' % (zipfile[:-4], root))
         os.system('rm %s' % (zipfile))
 
 
 def load_data(root, partition):
+    root = os.path.join(root, 'data')
     download(root)
-    DATA_DIR = os.path.join(root, 'data')
     all_data = []
     all_label = []
-    g = sorted(glob.glob(os.path.join(DATA_DIR, 'modelnet40_ply_hdf5_2048', 'ply_data_%s*.h5' % partition)))
+    g = sorted(glob.glob(os.path.join(root, 'modelnet40_ply_hdf5_2048', 'ply_data_%s*.h5' % partition)))
     for h5_name in g:
         f = h5py.File(h5_name)
         data = f['data'][:].astype('float32')
@@ -242,7 +266,12 @@ def load_data(root, partition):
 
 
 class ModelNet40(data.Dataset):
-    def __init__(self, root, num_points, partition='train', few=None):
+    def __init__(self, root, num_points, partition='train', few=None, from_candidates=False):
+
+        self.memory_candidates = None
+        if from_candidates:
+            self.memory_candidates = read_candidates(root)
+
         self.data, self.label = load_data(root, partition)
         self.num_points = num_points
         self.partition = partition
@@ -256,6 +285,7 @@ class ModelNet40(data.Dataset):
         self.classes = list(self.cat.keys())
 
         if partition == 'train' and few is not None:
+            print('hiiiiiiiiiii')
             order = np.array(
                 [2, 3, 4, 10, 14, 17, 19, 21, 22, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 39, 5, 16, 23, 25, 37, 9, 12,
                  13, 20, 24, 0, 1, 6, 34, 38, 7, 8, 11, 15, 18])
@@ -274,23 +304,29 @@ class ModelNet40(data.Dataset):
             self.label = self.label[ids]
             print(np.unique(self.label, return_counts=True))
 
-    def filter(self, classes, except_samples=None):
+    def filter(self, classes, except_samples=None, cand_ids=None):
         if except_samples is None:
             except_samples = []
         f = [i for i, item in enumerate(self.label) if (item in classes) or (i in except_samples)]
         self.label = self.label[f]
         self.data = self.data[f]
+
+        if self.memory_candidates is not None:
+            if cand_ids is not None:
+                self.data = np.append(self.data, self.memory_candidates[0][cand_ids], axis=0)
+                self.label = np.append(self.label, self.memory_candidates[1][cand_ids])
+
         self.classes = [c for i, c in enumerate(self.classes) if i in classes]
         print(self.classes)
 
     def set_order(self, order):
         self.classes = [self.classes[i] for i in order]
-        self.label = self._map_new_class_index(self.label, order)
+        self.label = self._map_new_class_index(self.label, order).reshape(-1)
 
     @staticmethod
     def _map_new_class_index(y, order):
         """Transforms targets for new class order."""
-        return np.array(list(map(lambda x: order.index(x), y)), dtype=np.int64)
+        return np.array(list(map(lambda x: np.where(order == x), y)), dtype=np.int64)
 
     def __getitem__(self, item):
         pointcloud = self.data[item][:self.num_points]
