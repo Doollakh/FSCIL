@@ -34,7 +34,7 @@ def read_candidates(root, n_cands=3):
             plydata = read_ply(filename)
             data[j * n_cands + i, :1024, :] = plydata
 
-    return data, np.arange(3, n * n_cands) // 3
+    return data, np.arange(0, n * n_cands) // 3
 
 
 def get_segmentation_classes(root):
