@@ -13,13 +13,14 @@ import torch.utils.data
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-from pointnet.dataset import ShapeNetDataset, ModelNetDataset, ModelNet40
+from pointnet.dataset import ModelNetDataset, ModelNet40
 from pointnet.losses import KnowlegeDistilation, PointNetLoss
 from pointnet.model import PointNetCls, PointNetLwf
 # learning_type = simple, joint, exemplar, lwf, bExemplar
 # forgetting
 from utils.general import increment_path
-from utils.plotcm import plot_confusion_matrix
+from utils.loss_functions import AngularPenaltySMLoss
+
 
 
 class Learning:
@@ -225,7 +226,10 @@ class Learning:
                        '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
             return
 
-        point_loss = PointNetLoss().cuda()
+        if opt.loss_type == 'nll_loss':
+            point_loss = PointNetLoss().cuda()
+        else:
+            point_loss = AngularPenaltySMLoss(256, self.n_class).cuda()
         if lwf and not flag:
             kd_loss = KnowlegeDistilation(T=float(self.opt.dist_temperature)).cuda()
             shared_model = classifier.copy()
@@ -382,6 +386,8 @@ if __name__ == '__main__':
         '--nepoch', type=int, default=250, help='number of epochs to train for')
     parser.add_argument(
         '--learning_type', type=str, default='simple', help='')
+    parser.add_argument(
+        '--loss_type', type=str, default='simple', help='')
     parser.add_argument('--lwf', action='store_true', help='is lwf')
     parser.add_argument(
         '--start_num_class', type=int, help='', default=20)

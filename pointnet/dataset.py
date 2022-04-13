@@ -285,7 +285,6 @@ class ModelNet40(data.Dataset):
         self.classes = list(self.cat.keys())
 
         if partition == 'train' and few is not None:
-            print('hiiiiiiiiiii')
             order = np.array(
                 [2, 3, 4, 10, 14, 17, 19, 21, 22, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 39, 5, 16, 23, 25, 37, 9, 12,
                  13, 20, 24, 0, 1, 6, 34, 38, 7, 8, 11, 15, 18])
@@ -331,9 +330,9 @@ class ModelNet40(data.Dataset):
     def __getitem__(self, item):
         pointcloud = self.data[item][:self.num_points]
         label = self.label[item]
-        if self.partition == 'train':
-            pointcloud = translate_pointcloud(pointcloud)
-            np.random.shuffle(pointcloud)
+#        if self.partition == 'train':
+#            pointcloud = translate_pointcloud(pointcloud)
+#            np.random.shuffle(pointcloud)
         return pointcloud, label
 
     def __len__(self):

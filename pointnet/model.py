@@ -149,7 +149,7 @@ class PointNetCls(nn.Module):
 
     def forward(self, x):
         x, trans, trans_feat = self.feat(x)
-        return F.log_softmax(self.fc3(x), dim=1), trans, trans_feat
+        return x, trans, trans_feat
 
     def copy(self):
         return copy.deepcopy(self)
