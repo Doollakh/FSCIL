@@ -22,7 +22,6 @@ from utils.general import increment_path
 from utils.loss_functions import AngularPenaltySMLoss
 
 
-
 class Learning:
 
     def __init__(self, options, s_d):
@@ -149,7 +148,7 @@ class Learning:
                 if _fe:
                     cand_ids = None
                     if self.opt.learning_type == 'bCandidate':
-                        cand_ids = np.arange(1, 105, step=3)[:len(self.classes)-self.opt.step_num_class]
+                        cand_ids = np.arange(1, 105, step=3)[:len(self.classes) - self.opt.step_num_class]
                         print('cand_ids: ', cand_ids)
 
                     dataset.filter(temp, self.except_samples, cand_ids)
@@ -218,7 +217,7 @@ class Learning:
         test_loss = np.zeros(epochs)
         if skip:
             print('skipping this stage ...')
-            test_loss[-1], test_acc[-1] = self.test(classifier, testdataloader, False, self.n_class)
+            test_loss[-1], test_acc[-1] = self.test(classifier, testdataloader, False, self.n_class, opt.loss_type)
             self.accuracies.append(test_acc[-1])
             print('%s loss: %f accuracy: %f\n' % (blue('test'), test_loss[-1], test_acc[-1]))
             print()
@@ -227,8 +226,10 @@ class Learning:
             return
 
         if opt.loss_type == 'nll_loss':
+            classifier.last_fc = True
             point_loss = PointNetLoss().cuda()
         else:
+            classifier.last_fc = False
             point_loss = AngularPenaltySMLoss(256, self.n_class).cuda()
         if lwf and not flag:
             kd_loss = KnowlegeDistilation(T=float(self.opt.dist_temperature)).cuda()
@@ -280,7 +281,7 @@ class Learning:
 
             if self.opt.test_epoch > 0 and (epoch + 1) % self.opt.test_epoch == 0 or (epoch + 1) == epochs:
                 test_loss[epoch], test_acc[epoch] = self.test(classifier_, testdataloader, lwf and not flag,
-                                                              self.n_class)
+                                                              self.n_class, opt.loss_type)
                 print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
                     epoch + 1, blue('test'), test_loss[epoch], test_acc[epoch]))
 
@@ -299,11 +300,17 @@ class Learning:
             self.accuracies.append(test_acc[-1])
 
     @staticmethod
-    def test(classifier, testdataloader, lwf, n_class):
+    def test(classifier, testdataloader, lwf, n_class, loss_type):
         cmt = torch.zeros(n_class, n_class, dtype=torch.int64)
         total_loss = 0
         total_correct = 0
         total_testset = 0
+        #        if loss_type == 'nll_loss':
+        point_loss = PointNetLoss().cuda()
+        classifier.last_fc = True
+        #       else:
+        #          classifier.last_fc = False
+        #         point_loss = AngularPenaltySMLoss(256, n_class).cuda()
         for i, data in tqdm(enumerate(testdataloader, 0)):
             points, target = data
             # target = target[:, 0]
@@ -321,7 +328,7 @@ class Learning:
             for p in stacked:
                 tl, pl = p.tolist()
                 cmt[tl, pl] = cmt[tl, pl] + 1
-            loss = F.nll_loss(pred, target)
+            loss = F.cross_entropy(pred, target)
             total_loss += loss.item()
             total_correct += correct.item()
             total_testset += points.size()[0]
@@ -387,7 +394,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--learning_type', type=str, default='simple', help='')
     parser.add_argument(
-        '--loss_type', type=str, default='simple', help='')
+        '--loss_type', type=str, default='angular', help='')
     parser.add_argument('--lwf', action='store_true', help='is lwf')
     parser.add_argument(
         '--start_num_class', type=int, help='', default=20)

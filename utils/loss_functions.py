@@ -35,7 +35,7 @@ class AngularPenaltySMLoss(nn.Module):
         self.fc = nn.Linear(in_features, out_features, bias=False)
         self.eps = eps
 
-    def forward(self, x, labels):
+    def forward(self, x, labels, *argv):
         '''
         input shape (N, in_features)
         '''
