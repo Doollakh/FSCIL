@@ -225,12 +225,15 @@ class Learning:
                        '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
             return
 
-        if opt.loss_type == 'nll_loss':
+        if self.opt.loss_type == 'nll_loss':
             classifier.last_fc = True
             point_loss = PointNetLoss().cuda()
+        elif self.opt.loss_type == 'cross_entropy':
+            classifier.last_fc = True
+            point_loss = torch.nn.CrossEntropyLoss().cuda()
         else:
             classifier.last_fc = False
-            point_loss = AngularPenaltySMLoss(256, self.n_class).cuda()
+            point_loss = AngularPenaltySMLoss(256, self.n_class, loss_type=self.opt.loss_type).cuda()
         if lwf and not flag:
             kd_loss = KnowlegeDistilation(T=float(self.opt.dist_temperature)).cuda()
             shared_model = classifier.copy()
@@ -239,6 +242,8 @@ class Learning:
             print(new_model)
 
         for epoch in range(epochs):
+            if self.opt.loss_type != 'nll_loss' and self.opt.loss_type != 'cross_entropy':
+                classifier.last_fc = False
             scheduler.step()
             n = len(dataloader)
             pbar = tqdm(total=n, desc=f'Epoch: {epoch + 1}/{epochs}  ', ncols=110)
