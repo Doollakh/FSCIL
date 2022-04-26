@@ -144,10 +144,10 @@ class PointNetfeat(nn.Module):
 
 
 class PointNetCls(nn.Module):
-    def __init__(self, k=2, feature_transform=False, last_fc=False, log_softmax=False):
+    def __init__(self, k=2, feature_transform=False, last_fc=False, log_softmax=False, input_transform=False):
         super(PointNetCls, self).__init__()
         self.feature_transform = feature_transform
-        self.feat = PointNetfeat(global_feat=True, feature_transform=feature_transform)
+        self.feat = PointNetfeat(global_feat=True, feature_transform=feature_transform, input_transform=input_transform)
         self.fc3 = nn.Linear(256, k)
         self.last_fc = last_fc
         self.log_softmax = log_softmax
