@@ -227,6 +227,7 @@ class Learning:
 
         if self.opt.loss_type == 'nll_loss':
             classifier.last_fc = True
+            classifier.log_softmax = True
             point_loss = PointNetLoss().cuda()
         elif self.opt.loss_type == 'cross_entropy':
             classifier.last_fc = True
