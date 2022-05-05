@@ -116,6 +116,7 @@ class PointNetfeat(nn.Module):
             trans = self.stn(x)
             x = x.transpose(2, 1)
             x = torch.bmm(x, trans)
+            trans = x.clone()
             x = x.transpose(2, 1)
         x = F.relu(self.bn1(self.conv1(x)))
 
@@ -129,6 +130,7 @@ class PointNetfeat(nn.Module):
         pointfeat = x
         x = F.relu(self.bn2(self.conv2(x)))
         x = self.bn3(self.conv3(x))
+        h = x.clone()
         x = torch.max(x, 2, keepdim=True)[0]
         x = x.view(-1, 1024)
 
@@ -140,7 +142,7 @@ class PointNetfeat(nn.Module):
 
         features = F.relu(self.bn4(self.fc1(features)))
         features = F.relu(self.bn5(self.dropout(self.fc2(features))))
-        return features, trans, trans_feat
+        return features, trans, trans_feat, h
 
 
 class PointNetCls(nn.Module):
@@ -153,7 +155,7 @@ class PointNetCls(nn.Module):
         self.log_softmax = log_softmax
 
     def forward(self, x):
-        x, trans, trans_feat = self.feat(x)
+        x, trans, trans_feat, _ = self.feat(x)
         if self.last_fc:
             x = self.fc3(x)
         if self.log_softmax:
@@ -200,7 +202,7 @@ class PointNetLwf(nn.Module):
         x, trans, trans_feat = self.shared_model(x)
 
         old = self.classifiers[0].fc3(x)
-        
+
         # new
         new = self.classifiers[1].fc3(x)
         return F.log_softmax(old, dim=1), F.log_softmax(new, dim=1), trans, trans_feat
@@ -223,7 +225,7 @@ class PointNetDenseCls(nn.Module):
     def forward(self, x):
         batchsize = x.size()[0]
         n_pts = x.size()[2]
-        x, trans, trans_feat = self.feat(x)
+        x, trans, trans_feat, _ = self.feat(x)
         x = F.relu(self.bn1(self.conv1(x)))
         x = F.relu(self.bn2(self.conv2(x)))
         x = F.relu(self.bn3(self.conv3(x)))
