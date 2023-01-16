@@ -1,3 +1,4 @@
 # PointNet.pytorch
-This repo is implementation for PointNet(https://arxiv.org/abs/1612.00593) in pytorch. The model is in `pointnet/model.py`.
+
+This repo addresses the problem of few-shot class incremental learning for the 3D domain alongside the domain gap from synthetic to real objects
 
