@@ -250,6 +250,7 @@ class Learning:
             pbar = tqdm(total=n, desc=f'Epoch: {epoch + 1}/{epochs}  ', ncols=110)
             for i, data in enumerate(dataloader, 0):
                 points, target = data
+                points = points.float()
                 if len(points) != 1:
                     # target = target[:, 0]
                     points.transpose_(2, 1)
