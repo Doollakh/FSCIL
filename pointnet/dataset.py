@@ -285,19 +285,12 @@ class ModelNet40(data.Dataset):
         self.classes = list(self.cat.keys())
 
         if partition == 'train' and few is not None:
-            order = np.array(
-                [2, 3, 4, 10, 14, 17, 19, 21, 22, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 39, 5, 16, 23, 25, 37, 9, 12,
-                 13, 20, 24, 0, 1, 6, 34, 38, 7, 8, 11, 15, 18])
-            o = order[20:]
             ids = []
             c = np.zeros(40)
             for i, j in enumerate(self.label):
-                if j in o:
-                    if c[j] < few:
-                        ids.append(i)
-                        c[j] += 1
-                else:
+                if c[j] < few:
                     ids.append(i)
+                    c[j] += 1
 
             self.data = self.data[ids]
             self.label = self.label[ids]
