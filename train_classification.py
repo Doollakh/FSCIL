@@ -160,13 +160,13 @@ class Learning:
         dataloader = torch.utils.data.DataLoader(
             dataset,
             batch_size=self.opt.batchSize,
-            shuffle=False,
+            shuffle=True,
             num_workers=int(self.opt.workers))
 
         testdataloader = torch.utils.data.DataLoader(
             test_dataset,
             batch_size=self.opt.batchSize,
-            shuffle=False,
+            shuffle=True,
             num_workers=int(self.opt.workers))
 
         try:
