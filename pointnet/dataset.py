@@ -32,7 +32,7 @@ def read_candidates(root, n_cands=3):
             filename = f'{root}/{c}_{i}.ply'
             # read filename.ply to numpy array
             plydata = read_ply(filename)
-            data[j * n_cands + i, :1024, :] = plydata
+            data[j * n_cands + i, :1024, :] = plydata / 10
 
     return data, np.arange(0, n * n_cands) // 3
 
