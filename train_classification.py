@@ -148,7 +148,7 @@ class Learning:
                 if _fe:
                     cand_ids = None
                     if self.opt.learning_type == 'bCandidate':
-                        cand_ids = np.arange(1, 105)[:(len(self.classes) - self.opt.step_num_class)*3]
+                        cand_ids = np.arange(0, 105)[:(len(self.classes) - self.opt.step_num_class)*3]
                         print('cand_ids: ', cand_ids)
 
                     dataset.filter(temp, self.except_samples, cand_ids)
