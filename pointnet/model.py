@@ -153,14 +153,17 @@ class PointNetCls(nn.Module):
         self.fc3 = nn.Linear(256, k)
         self.last_fc = last_fc
         self.log_softmax = log_softmax
+        self.feature = None
 
     def forward(self, x):
         x, trans, trans_feat, _ = self.feat(x)
+        self.feature = x
         if self.last_fc:
             x = self.fc3(x)
         if self.log_softmax:
             x = F.log_softmax(x, dim=1)
-        return x, trans, trans_feat
+
+        return x, trans, trans_feat 
 
     def copy(self):
         return copy.deepcopy(self)
