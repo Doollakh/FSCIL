@@ -198,6 +198,9 @@ class Learning:
         if self.opt.model != '':
             classifier.load_state_dict(torch.load(self.opt.model))
 
+        if self.opt.KD and self.opt.learning_type == 'bCandidate':
+            old_classifire = classifier.copy().cuda()
+
         optimizer = optim.Adam(classifier.parameters(), lr=0.001, betas=(0.9, 0.999))
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
         classifier.cuda()
@@ -235,12 +238,17 @@ class Learning:
         else:
             classifier.last_fc = False
             point_loss = AngularPenaltySMLoss(256, self.n_class, loss_type=self.opt.loss_type).cuda()
+
         if lwf and not flag:
             kd_loss = KnowlegeDistilation(T=float(self.opt.dist_temperature)).cuda()
             shared_model = classifier.copy()
             new_model = PointNetLwf(shared_model, old_k=self.n_class - self.opt.step_num_class,
                                     new_k=self.opt.step_num_class).cuda()
             print(new_model)
+        
+        # If knowledge distillation is selected in bCandicate method
+        elif self.opt.KD and self.opt.learning_type == 'bCandidate' and not flag:
+            kd_loss = KnowlegeDistilation(T=float(self.opt.dist_temperature)).cuda()
 
         for epoch in range(epochs):
             if self.opt.loss_type != 'nll_loss' and self.opt.loss_type != 'cross_entropy':
@@ -261,13 +269,20 @@ class Learning:
                     else:
                         classifier.train()
                     pred, _, trans_feat = classifier(points)
-                    if lwf and not flag:
+                    if lwf and not flag: 
                         new_model.train()
                         old_pred, new_pred, _, trans_feat = new_model(points)
                         loss = point_loss(new_pred, target, trans_feat, self.opt.feature_transform)
                         kdl = kd_loss(pred, old_pred)
                         loss += kdl * self.opt.dist_factor
                         classifier_ = new_model
+                    elif self.opt.KD and self.opt.learning_type == 'bCandidate' and not flag:
+                        old_vector,_,_ = old_classifire(points)
+                        new_vector     = classifier.feature
+                        kdl            = kd_loss(new_vector, old_vector)
+                        loss           = point_loss(pred, target, trans_feat, self.opt.feature_transform)
+                        loss          += kdl * self.opt.dist_factor
+                        classifier_    = classifier
                     else:
                         classifier_ = classifier
                         loss = point_loss(pred, target, trans_feat, self.opt.feature_transform)
@@ -434,7 +449,7 @@ if __name__ == '__main__':
     parser.add_argument('--dir_pretrained', type=str, default='cls', help='load pretrained model')
     parser.add_argument('--progress', type=bool, default=True,
                         help='has new progress?')
-
+    parser.add_argument('--KD', action='store_true', help='')
     opt = parser.parse_args()
     print(opt)
 
