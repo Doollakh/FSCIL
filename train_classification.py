@@ -99,7 +99,7 @@ class Learning:
             else:
                 few = self.opt.few_shots if self.opt.f else None
                 dataset = ModelNet40(root=self.opt.dataset, partition='train', num_points=self.opt.num_points, few=few
-                                     , from_candidates=self.opt.learning_type == 'bCandidate',n_cands=self.opt.n_cands)
+                                     , from_candidates=self.opt.learning_type == 'bCandidate',n_cands=self.opt.n_cands,cands_path=self.opt.cands_path)
 
                 test_dataset = ModelNet40(root=self.opt.dataset, partition='test', num_points=self.opt.num_points,
                                           few=None)
@@ -431,6 +431,7 @@ if __name__ == '__main__':
     parser.add_argument(
         '--dist_factor', type=float, default=0.4, help='distillation factor')
     parser.add_argument('--outf', type=str, default='cls', help='output folder')
+    parser.add_argument('--cands_path', type=str, default='cands_path', help='Candidate path')
     parser.add_argument('--name', default='exp', help='save results to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--f', action='store_true', help='')

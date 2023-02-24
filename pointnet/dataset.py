@@ -20,7 +20,6 @@ def read_ply(filename):
 
 
 def read_candidates(root, n_cands=3):
-    root = os.path.join(root, 'data/cands')
     classes = ['bed', 'bench', 'bookshelf', 'cup', 'dresser', 'guitar', 'lamp', 'mantel', 'monitor', 'plant', 'radio',
                'range_hood', 'sink', 'sofa', 'stairs', 'stool', 'table', 'toilet', 'tv_stand', 'xbox', 'bottle',
                'glass_box', 'night_stand', 'piano', 'vase', 'cone', 'desk', 'door', 'laptop', 'person', 'airplane',
@@ -266,11 +265,11 @@ def load_data(root, partition):
 
 
 class ModelNet40(data.Dataset):
-    def __init__(self, root, num_points, partition='train', few=None, from_candidates=False,n_cands=3):
+    def __init__(self, root, num_points, partition='train', few=None, from_candidates=False,n_cands=3,cands_path='/content'):
 
         self.memory_candidates = None
         if from_candidates:
-            self.memory_candidates = read_candidates(root,n_cands)
+            self.memory_candidates = read_candidates(cands_path,n_cands)
 
         self.data, self.label = load_data(root, partition)
         self.num_points = num_points
