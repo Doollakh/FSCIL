@@ -34,7 +34,7 @@ def read_candidates(root, n_cands=3):
             plydata = read_ply(filename)
             data[j * n_cands + i, :1024, :] = plydata / np.max(np.abs(plydata))
 
-    return data, np.arange(0, n * n_cands) // 3
+    return data, np.arange(0, n * n_cands) // n_cands
 
 
 def get_segmentation_classes(root):
@@ -266,11 +266,11 @@ def load_data(root, partition):
 
 
 class ModelNet40(data.Dataset):
-    def __init__(self, root, num_points, partition='train', few=None, from_candidates=False):
+    def __init__(self, root, num_points, partition='train', few=None, from_candidates=False,n_cands=3):
 
         self.memory_candidates = None
         if from_candidates:
-            self.memory_candidates = read_candidates(root)
+            self.memory_candidates = read_candidates(root,n_cands)
 
         self.data, self.label = load_data(root, partition)
         self.num_points = num_points

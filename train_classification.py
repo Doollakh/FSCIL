@@ -99,7 +99,7 @@ class Learning:
             else:
                 few = self.opt.few_shots if self.opt.f else None
                 dataset = ModelNet40(root=self.opt.dataset, partition='train', num_points=self.opt.num_points, few=few
-                                     , from_candidates=self.opt.learning_type == 'bCandidate')
+                                     , from_candidates=self.opt.learning_type == 'bCandidate',n_cands=self.opt.n_cands)
 
                 test_dataset = ModelNet40(root=self.opt.dataset, partition='test', num_points=self.opt.num_points,
                                           few=None)
@@ -148,7 +148,7 @@ class Learning:
                 if _fe:
                     cand_ids = None
                     if self.opt.learning_type == 'bCandidate':
-                        cand_ids = np.arange(0, 105)[:(len(self.classes) - self.opt.step_num_class)*3]
+                        cand_ids = np.arange(0, 40*self.opt.n_cands)[:(len(self.classes) - self.opt.step_num_class)*self.opt.n_cands]
                         print('cand_ids: ', cand_ids)
 
                     dataset.filter(temp, self.except_samples, cand_ids)
@@ -422,6 +422,8 @@ if __name__ == '__main__':
         '--start_num_class', type=int, help='', default=20)
     parser.add_argument(
         '--step_num_class', type=int, help='', default=5)
+    parser.add_argument(
+        '--n_cands', type=int, help='', default=3)
     parser.add_argument(
         '--manualSeed', type=int, help='', default=1)
     parser.add_argument(
