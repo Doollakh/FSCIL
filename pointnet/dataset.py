@@ -310,6 +310,15 @@ class ModelNet40(data.Dataset):
 
         self.classes = [c for i, c in enumerate(self.classes) if i in classes]
         print(self.classes)
+    
+    def normalize(self):
+        temp_data = np.zeros_like(self.data)
+        for idx, sample_data in enumerate(self.data):
+            temp_data[idx,:,0] = sample_data[:,0] / np.max(np.abs(sample_data[:,0]))
+            temp_data[idx,:,1] = sample_data[:,1] / np.max(np.abs(sample_data[:,1]))
+            temp_data[idx,:,2] = sample_data[:,2] / np.max(np.abs(sample_data[:,2]))
+
+        self.data = temp_data
 
     def set_order(self, order):
         self.classes = [self.classes[i] for i in order]
