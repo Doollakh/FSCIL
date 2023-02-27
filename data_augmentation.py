@@ -55,9 +55,9 @@ for j, c in enumerate(classes):
     for i in range(n_cands):
         filename = f'{root}/{c}_{i}.ply'
         plydata = read_ply(filename)
-        data[j * n_cands + i, :n_point, :] = plydata / np.max(np.abs(plydata))
+        data[j * n_cands + i, :n_point, :] = plydata #/ np.max(np.abs(plydata))
 
-labels = np.arange(0, n * n_cands) // 3
+labels = np.arange(0, n * n_cands) // n_cands
 
 # pass to cuda
 points = torch.from_numpy(data).cuda();print(data.shape)
@@ -72,7 +72,7 @@ for idx, label in enumerate(labels):
 
 
 # Iterate for each new augmentation
-for num in range(3,total_augment):
+for num in range(n_cands,total_augment):
     print(num)
     # define some parameters
     lam = np.random.beta(1, 1)*0.4; print("Lamda: ", lam, f"And {int(np.abs(lam*n_point))} will be change")
