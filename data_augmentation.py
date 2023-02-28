@@ -21,6 +21,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument(
     '--n_cands', type=int, default=3, help='Number of data on desired folder')
 parser.add_argument(
+    '--lambda_', type=int, default=0.1, help='default value for lambda')
+parser.add_argument(
     '--root', type=str, default='/content/drive/MyDrive/data/data/bExamplr', help='Path to folder')
 parser.add_argument(
     '--n_point', type=int, help='number of points', default=2048)
@@ -38,6 +40,7 @@ root          = opt.root
 n_point       = opt.n_point
 output_path   = opt.output_path
 total_augment = opt.total_augment
+lambda_  = opt.lambda_
 
 # An Instance to write point-cloud
 pcd = o3d.geometry.PointCloud()
@@ -75,7 +78,7 @@ for idx, label in enumerate(labels):
 for num in range(n_cands,total_augment):
     print(num)
     # define some parameters
-    lam = np.random.beta(1, 1)*0.4; print("Lamda: ", lam, f"And {int(np.abs(lam*n_point))} will be change")
+    lam = np.random.beta(1, 1)*lambda_; print("Lamda: ", lam, f"And {int(np.abs(lam*n_point))} will be change")
     B = points.size()[0]
 
     # shufflig indexs
