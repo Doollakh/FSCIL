@@ -4,8 +4,8 @@ import copy
 import random
 from pathlib import Path
 from sklearn.metrics import confusion_matrix
-import seaborn as sns
-from pylab import savefig
+from sklearn import metrics
+import matplotlib.pyplot as plt 
 
 import numpy as np
 import torch
@@ -366,10 +366,11 @@ class Learning:
 
         
         # Calculate confusion matrix
-        cm = confusion_matrix(target_list, pred_list)
-        cm_fig = sns.heatmap(cm,annot=True)
-        figure = cm_fig.get_figure() 
-        figure.savefig(f'./results/CM_{n_class}.png', dpi=400)
+        plt.rcParams.update({'font.size': 4})
+        confusion_matrix = metrics.confusion_matrix(target_list, pred_list)
+        cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
+        cm_display.plot()
+        plt.savefig(f'./results/CM_{n_class}.png', dpi=400)
 
 
         return total_loss / float(total_testset), total_correct / float(total_testset)
