@@ -31,7 +31,7 @@ def read_candidates(root, n_cands=3):
             filename = f'{root}/{c}_{i}.ply'
             # read filename.ply to numpy array
             plydata = read_ply(filename)
-            data[j * n_cands + i, :1024, :] = plydata / np.max(np.abs(plydata))
+            data[j * n_cands + i, :1024, :] = plydata #/ np.max(np.abs(plydata))
 
     return data, np.arange(0, n * n_cands) // n_cands
 
