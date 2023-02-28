@@ -3,6 +3,9 @@ import argparse
 import copy
 import random
 from pathlib import Path
+from sklearn.metrics import confusion_matrix
+import seaborn as sns
+from pylab import savefig
 
 import numpy as np
 import torch
@@ -12,6 +15,7 @@ import torch.optim as optim
 import torch.utils.data
 from matplotlib import pyplot as plt
 from tqdm import tqdm
+
 
 from pointnet.dataset import ModelNetDataset, ModelNet40
 from pointnet.losses import KnowlegeDistilation, PointNetLoss
@@ -323,7 +327,6 @@ class Learning:
 
     @staticmethod
     def test(classifier, testdataloader, lwf, n_class, loss_type):
-        cmt = torch.zeros(n_class, n_class, dtype=torch.int64)
         total_loss = 0
         total_correct = 0
         total_testset = 0
@@ -333,6 +336,9 @@ class Learning:
         #       else:
         #          classifier.last_fc = False
         #         point_loss = AngularPenaltySMLoss(256, n_class).cuda()
+
+        pred_list   = [] 
+        target_list = []
         for i, data in tqdm(enumerate(testdataloader, 0)):
             points, target = data
             # target = target[:, 0]
@@ -347,15 +353,24 @@ class Learning:
             pred_choice = pred.data.max(1)[1]
             correct = pred_choice.eq(target.data).cpu().sum()
             stacked = torch.stack((target.data, pred_choice), dim=1).cpu()
-            for p in stacked:
-                tl, pl = p.tolist()
-                cmt[tl, pl] = cmt[tl, pl] + 1
+            
             loss = F.cross_entropy(pred, target)
             total_loss += loss.item()
             total_correct += correct.item()
             total_testset += points.size()[0]
-        plt.figure(figsize=(10, 10))
-        # plot_confusion_matrix(cmt, np.arange(n_class))
+
+            # make a list of targets and predictions label for using in confusion-matrix
+            for tar,pre in stacked.numpy():
+              pred_list.append(pre)
+              target_list.append(tar)
+
+        
+        # Calculate confusion matrix
+        cm = confusion_matrix(target_list, pred_list)
+        cm_fig = sns.heatmap(cm,annot=True)
+        figure = cm_fig.get_figure() 
+        figure.savefig(f'./results/CM_{n_class}.png', dpi=400)
+
 
         return total_loss / float(total_testset), total_correct / float(total_testset)
 
