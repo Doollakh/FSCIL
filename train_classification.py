@@ -17,7 +17,7 @@ from matplotlib import pyplot as plt
 from tqdm import tqdm
 
 
-from pointnet.dataset import ModelNetDataset, ModelNet40
+from pointnet.dataset import ModelNetDataset, ModelNet40, ScanObjects
 from pointnet.losses import KnowlegeDistilation, PointNetLoss
 from pointnet.model import PointNetCls, PointNetLwf
 # learning_type = simple, joint, exemplar, lwf, bExemplar
@@ -111,6 +111,16 @@ class Learning:
             self.num_classes = len(dataset.classes)
             dataset.set_order(self.order)
             test_dataset.set_order(self.order)
+
+        elif self.opt.dataset_type == 'scan_object_nobg':
+            print('(Info) Reading Scan object')
+            few = self.opt.few_shots if self.opt.f else None
+            dataset = ScanObjects(root=self.opt.dataset, partition='train', num_points=self.opt.num_points, few=few
+                                     , from_candidates=self.opt.learning_type == 'bCandidate',n_cands=self.opt.n_cands,cands_path=self.opt.cands_path)
+
+            test_dataset = ScanObjects(root=self.opt.dataset, partition='test', num_points=self.opt.num_points,few=None)
+
+            self.num_classes = len(dataset.classes)
 
         else:
             exit('wrong dataset type')
@@ -263,6 +273,7 @@ class Learning:
             for i, data in enumerate(dataloader, 0):
                 points, target = data
                 points = points.float()
+                target = target.type(torch.LongTensor)
                 if len(points) != 1:
                     # target = target[:, 0]
                     points.transpose_(2, 1)
@@ -341,6 +352,8 @@ class Learning:
         target_list = []
         for i, data in tqdm(enumerate(testdataloader, 0)):
             points, target = data
+            target = target.type(torch.LongTensor)
+            points = points.float()
             # target = target[:, 0]
             points.transpose_(2, 1)
             points, target = points.cuda(), target.cuda()
