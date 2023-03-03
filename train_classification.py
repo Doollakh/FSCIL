@@ -5,6 +5,7 @@ import random
 from pathlib import Path
 from sklearn.metrics import confusion_matrix
 from sklearn import metrics
+from focal_loss.focal_loss import FocalLoss
 import matplotlib.pyplot as plt 
 
 import numpy as np
@@ -249,6 +250,9 @@ class Learning:
         elif self.opt.loss_type == 'cross_entropy':
             classifier.last_fc = True
             point_loss = torch.nn.CrossEntropyLoss().cuda()
+        elif self.opt.loss_type == 'focal_loss':
+            W = torch.FloatTensor([10 if i < self.n_class - self.opt.step_num_class else 0.1 for i in range(self.n_class)]).cuda()
+            point_loss = FocalLoss(gamma=2, weights=W).cuda()
         else:
             classifier.last_fc = False
             point_loss = AngularPenaltySMLoss(256, self.n_class, loss_type=self.opt.loss_type).cuda()
@@ -295,7 +299,10 @@ class Learning:
                         old_vector,_,_ = old_classifire(points)
                         new_vector     = classifier.feature
                         kdl            = kd_loss(new_vector, old_vector)
-                        loss           = point_loss(pred, target, trans_feat, self.opt.feature_transform)
+                        if self.opt.loss_type == 'nll_loss':
+                            loss       = point_loss(pred, target, trans_feat, self.opt.feature_transform)
+                        elif self.opt.loss_type == 'focal_loss':
+                            loss       = point_loss(pred, target)
                         loss          += kdl * self.opt.dist_factor
                         classifier_    = classifier
                     else:
