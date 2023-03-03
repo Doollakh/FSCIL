@@ -271,8 +271,6 @@ class Learning:
             kd_loss = KnowlegeDistilation(T=float(self.opt.dist_temperature)).cuda()
 
         for epoch in range(epochs):
-            if self.opt.loss_type != 'nll_loss' and self.opt.loss_type != 'cross_entropy':
-                classifier.last_fc = False
             scheduler.step()
             n = len(dataloader)
             pbar = tqdm(total=n, desc=f'Epoch: {epoch + 1}/{epochs}  ', ncols=110)
