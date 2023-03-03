@@ -251,6 +251,8 @@ class Learning:
             classifier.last_fc = True
             point_loss = torch.nn.CrossEntropyLoss().cuda()
         elif self.opt.loss_type == 'focal_loss':
+            classifier.last_fc = True
+            classifier.log_softmax = True
             W = torch.FloatTensor([10 if i < self.n_class - self.opt.step_num_class else 0.1 for i in range(self.n_class)]).cuda()
             point_loss = FocalLoss(gamma=2, weights=W).cuda()
         else:
