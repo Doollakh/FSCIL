@@ -191,10 +191,10 @@ class Learning:
 
         if lwf and not flag:
             classifier = PointNetCls(k=self.n_class - self.opt.step_num_class,
-                                     feature_transform=self.opt.feature_transform)
+                                     feature_transform=self.opt.feature_transform, input_transform=self.opt.input_transform)
             # todo save classifier after first task and save new_model and second task
         else:
-            classifier = PointNetCls(k=self.n_class, feature_transform=self.opt.feature_transform)
+            classifier = PointNetCls(k=self.n_class, feature_transform=self.opt.feature_transform, input_transform=self.opt.input_transform)
 
         epochs = opt.nepoch
         if _fe and not flag:
@@ -477,6 +477,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, required=True, help="dataset path")
     parser.add_argument('--dataset_type', type=str, default='modelnet40', help="dataset type shapenet|modelnet40")
     parser.add_argument('--feature_transform', action='store_true', help="use feature transform")
+    parser.add_argument('--input_transform', action='store_true', help="use input transform")
     parser.add_argument('--is_h5', type=bool, default=True,
                         help='is h5')
     parser.add_argument('--save_after_epoch', action='store_true',
