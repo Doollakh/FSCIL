@@ -3,6 +3,10 @@ import argparse
 import copy
 import random
 from pathlib import Path
+from sklearn.metrics import confusion_matrix
+from sklearn import metrics
+from focal_loss.focal_loss import FocalLoss
+import matplotlib.pyplot as plt 
 
 import numpy as np
 import torch
@@ -13,7 +17,8 @@ import torch.utils.data
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
-from pointnet.dataset import ModelNetDataset, ModelNet40
+
+from pointnet.dataset import ModelNetDataset, ModelNet40, ScanObjects
 from pointnet.losses import KnowlegeDistilation, PointNetLoss
 from pointnet.model import PointNetCls, PointNetLwf
 # learning_type = simple, joint, exemplar, lwf, bExemplar
@@ -99,7 +104,7 @@ class Learning:
             else:
                 few = self.opt.few_shots if self.opt.f else None
                 dataset = ModelNet40(root=self.opt.dataset, partition='train', num_points=self.opt.num_points, few=few
-                                     , from_candidates=self.opt.learning_type == 'bCandidate')
+                                     , from_candidates=self.opt.learning_type == 'bCandidate',n_cands=self.opt.n_cands,cands_path=self.opt.cands_path)
 
                 test_dataset = ModelNet40(root=self.opt.dataset, partition='test', num_points=self.opt.num_points,
                                           few=None)
@@ -107,6 +112,16 @@ class Learning:
             self.num_classes = len(dataset.classes)
             dataset.set_order(self.order)
             test_dataset.set_order(self.order)
+
+        elif self.opt.dataset_type == 'scan_object_nobg':
+            print('(Info) Reading Scan object')
+            few = self.opt.few_shots if self.opt.f else None
+            dataset = ScanObjects(root=self.opt.dataset, partition='train', num_points=self.opt.num_points, few=few
+                                     , from_candidates=self.opt.learning_type == 'bCandidate',n_cands=self.opt.n_cands,cands_path=self.opt.cands_path)
+
+            test_dataset = ScanObjects(root=self.opt.dataset, partition='test', num_points=self.opt.num_points,few=None)
+
+            self.num_classes = len(dataset.classes)
 
         else:
             exit('wrong dataset type')
@@ -148,7 +163,7 @@ class Learning:
                 if _fe:
                     cand_ids = None
                     if self.opt.learning_type == 'bCandidate':
-                        cand_ids = np.arange(1, 105, step=3)[:len(self.classes) - self.opt.step_num_class]
+                        cand_ids = np.arange(0, 40*self.opt.n_cands)[:(len(self.classes) - self.opt.step_num_class)*self.opt.n_cands]
                         print('cand_ids: ', cand_ids)
 
                     dataset.filter(temp, self.except_samples, cand_ids)
@@ -160,13 +175,13 @@ class Learning:
         dataloader = torch.utils.data.DataLoader(
             dataset,
             batch_size=self.opt.batchSize,
-            shuffle=False,
+            shuffle=True,
             num_workers=int(self.opt.workers))
 
         testdataloader = torch.utils.data.DataLoader(
             test_dataset,
             batch_size=self.opt.batchSize,
-            shuffle=False,
+            shuffle=True,
             num_workers=int(self.opt.workers))
 
         try:
@@ -176,10 +191,10 @@ class Learning:
 
         if lwf and not flag:
             classifier = PointNetCls(k=self.n_class - self.opt.step_num_class,
-                                     feature_transform=self.opt.feature_transform)
+                                     feature_transform=self.opt.feature_transform, input_transform=self.opt.input_transform)
             # todo save classifier after first task and save new_model and second task
         else:
-            classifier = PointNetCls(k=self.n_class, feature_transform=self.opt.feature_transform)
+            classifier = PointNetCls(k=self.n_class, feature_transform=self.opt.feature_transform, input_transform=self.opt.input_transform)
 
         epochs = opt.nepoch
         if _fe and not flag:
@@ -197,6 +212,9 @@ class Learning:
 
         if self.opt.model != '':
             classifier.load_state_dict(torch.load(self.opt.model))
+
+        if self.opt.KD and self.opt.learning_type == 'bCandidate':
+            old_classifire = classifier.copy().cuda()
 
         optimizer = optim.Adam(classifier.parameters(), lr=0.001, betas=(0.9, 0.999))
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
@@ -232,24 +250,34 @@ class Learning:
         elif self.opt.loss_type == 'cross_entropy':
             classifier.last_fc = True
             point_loss = torch.nn.CrossEntropyLoss().cuda()
+        elif self.opt.loss_type == 'focal_loss':
+            classifier.last_fc = True
+            classifier.log_softmax = True
+            W = torch.FloatTensor([10 if i < self.n_class - self.opt.step_num_class else 0.1 for i in range(self.n_class)]).cuda()
+            point_loss = FocalLoss(gamma=2, weights=W).cuda()
         else:
             classifier.last_fc = False
             point_loss = AngularPenaltySMLoss(256, self.n_class, loss_type=self.opt.loss_type).cuda()
+
         if lwf and not flag:
             kd_loss = KnowlegeDistilation(T=float(self.opt.dist_temperature)).cuda()
             shared_model = classifier.copy()
             new_model = PointNetLwf(shared_model, old_k=self.n_class - self.opt.step_num_class,
                                     new_k=self.opt.step_num_class).cuda()
             print(new_model)
+        
+        # If knowledge distillation is selected in bCandicate method
+        elif self.opt.KD and self.opt.learning_type == 'bCandidate' and not flag:
+            kd_loss = KnowlegeDistilation(T=float(self.opt.dist_temperature)).cuda()
 
         for epoch in range(epochs):
-            if self.opt.loss_type != 'nll_loss' and self.opt.loss_type != 'cross_entropy':
-                classifier.last_fc = False
             scheduler.step()
             n = len(dataloader)
             pbar = tqdm(total=n, desc=f'Epoch: {epoch + 1}/{epochs}  ', ncols=110)
             for i, data in enumerate(dataloader, 0):
                 points, target = data
+                points = points.float()
+                target = target.type(torch.LongTensor)
                 if len(points) != 1:
                     # target = target[:, 0]
                     points.transpose_(2, 1)
@@ -260,13 +288,23 @@ class Learning:
                     else:
                         classifier.train()
                     pred, _, trans_feat = classifier(points)
-                    if lwf and not flag:
+                    if lwf and not flag: 
                         new_model.train()
                         old_pred, new_pred, _, trans_feat = new_model(points)
                         loss = point_loss(new_pred, target, trans_feat, self.opt.feature_transform)
                         kdl = kd_loss(pred, old_pred)
                         loss += kdl * self.opt.dist_factor
                         classifier_ = new_model
+                    elif self.opt.KD and self.opt.learning_type == 'bCandidate' and not flag:
+                        old_vector,_,_ = old_classifire(points)
+                        new_vector     = classifier.feature
+                        kdl            = kd_loss(new_vector, old_vector)
+                        if self.opt.loss_type == 'nll_loss':
+                            loss       = point_loss(pred, target, trans_feat, self.opt.feature_transform)
+                        elif self.opt.loss_type == 'focal_loss':
+                            loss       = point_loss(pred, target)
+                        loss          += kdl * self.opt.dist_factor
+                        classifier_    = classifier
                     else:
                         classifier_ = classifier
                         loss = point_loss(pred, target, trans_feat, self.opt.feature_transform)
@@ -307,7 +345,6 @@ class Learning:
 
     @staticmethod
     def test(classifier, testdataloader, lwf, n_class, loss_type):
-        cmt = torch.zeros(n_class, n_class, dtype=torch.int64)
         total_loss = 0
         total_correct = 0
         total_testset = 0
@@ -317,8 +354,13 @@ class Learning:
         #       else:
         #          classifier.last_fc = False
         #         point_loss = AngularPenaltySMLoss(256, n_class).cuda()
+
+        pred_list   = [] 
+        target_list = []
         for i, data in tqdm(enumerate(testdataloader, 0)):
             points, target = data
+            target = target.type(torch.LongTensor)
+            points = points.float()
             # target = target[:, 0]
             points.transpose_(2, 1)
             points, target = points.cuda(), target.cuda()
@@ -331,15 +373,25 @@ class Learning:
             pred_choice = pred.data.max(1)[1]
             correct = pred_choice.eq(target.data).cpu().sum()
             stacked = torch.stack((target.data, pred_choice), dim=1).cpu()
-            for p in stacked:
-                tl, pl = p.tolist()
-                cmt[tl, pl] = cmt[tl, pl] + 1
+            
             loss = F.cross_entropy(pred, target)
             total_loss += loss.item()
             total_correct += correct.item()
             total_testset += points.size()[0]
-        plt.figure(figsize=(10, 10))
-        # plot_confusion_matrix(cmt, np.arange(n_class))
+
+            # make a list of targets and predictions label for using in confusion-matrix
+            for tar,pre in stacked.numpy():
+              pred_list.append(pre)
+              target_list.append(tar)
+
+        
+        # Calculate confusion matrix
+        plt.rcParams.update({'font.size': 4})
+        confusion_matrix = metrics.confusion_matrix(target_list, pred_list)
+        cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
+        cm_display.plot()
+        plt.savefig(f'./results/CM_{n_class}.png', dpi=400)
+
 
         return total_loss / float(total_testset), total_correct / float(total_testset)
 
@@ -407,12 +459,15 @@ if __name__ == '__main__':
     parser.add_argument(
         '--step_num_class', type=int, help='', default=5)
     parser.add_argument(
+        '--n_cands', type=int, help='', default=3)
+    parser.add_argument(
         '--manualSeed', type=int, help='', default=1)
     parser.add_argument(
         '--dist_temperature', type=int, default=1, help='distillation temperature')
     parser.add_argument(
         '--dist_factor', type=float, default=0.4, help='distillation factor')
     parser.add_argument('--outf', type=str, default='cls', help='output folder')
+    parser.add_argument('--cands_path', type=str, default='cands_path', help='Candidate path')
     parser.add_argument('--name', default='exp', help='save results to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--f', action='store_true', help='')
@@ -422,6 +477,7 @@ if __name__ == '__main__':
     parser.add_argument('--dataset', type=str, required=True, help="dataset path")
     parser.add_argument('--dataset_type', type=str, default='modelnet40', help="dataset type shapenet|modelnet40")
     parser.add_argument('--feature_transform', action='store_true', help="use feature transform")
+    parser.add_argument('--input_transform', action='store_true', help="use input transform")
     parser.add_argument('--is_h5', type=bool, default=True,
                         help='is h5')
     parser.add_argument('--save_after_epoch', action='store_true',
@@ -433,7 +489,7 @@ if __name__ == '__main__':
     parser.add_argument('--dir_pretrained', type=str, default='cls', help='load pretrained model')
     parser.add_argument('--progress', type=bool, default=True,
                         help='has new progress?')
-
+    parser.add_argument('--KD', action='store_true', help='')
     opt = parser.parse_args()
     print(opt)
 
