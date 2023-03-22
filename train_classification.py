@@ -73,8 +73,9 @@ class Learning:
                 if self.opt.continue_from is not None:
                     skip = self.opt.continue_from > self.n_class
 
-                if skip == True:
+                if flag == False:
                     stage_id += 1
+
                 self.train(flag, _fe, skip, lwf, stage_id=stage_id)
 
                 flag = False
