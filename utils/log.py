@@ -10,7 +10,7 @@ class Log():
 
     # Make json file 
     def make_json(self):
-        with open('./result/data.json', 'w', encoding='utf-8') as f:
+        with open('./results/data.json', 'w', encoding='utf-8') as f:
             json.dump(self.data, f, ensure_ascii=False, indent=10)
 
     # Add data from Opt
