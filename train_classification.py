@@ -242,7 +242,7 @@ class Learning:
         test_loss = np.zeros(epochs)
         if skip:
             print('skipping this stage ...')
-            test_loss[-1], test_acc[-1] = self.test(classifier, testdataloader, False, self.n_class, opt.loss_type, stage_id)
+            test_loss[-1], test_acc[-1] = self.test(classifier, testdataloader, False, self.n_class,loss_type=opt.loss_type, stage_id=stage_id)
             self.accuracies.append(test_acc[-1])
             print('%s loss: %f accuracy: %f\n' % (blue('test'), test_loss[-1], test_acc[-1]))
             print()
