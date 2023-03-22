@@ -4,9 +4,9 @@ import json
 class Log():
     # initialization of class
     def __init__(self, opt):
+        self.data = {'config': {}, 'results': {}}
         self.opt = opt
         self.add_opt()
-        self.data = {'config': {}, 'results': {}}
 
     # Make json file 
     def make_json(self):
