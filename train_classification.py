@@ -25,6 +25,7 @@ from pointnet.model import PointNetCls, PointNetLwf
 # forgetting
 from utils.general import increment_path
 from utils.loss_functions import AngularPenaltySMLoss
+from utils.log import Log
 
 
 class Learning:
@@ -501,5 +502,6 @@ if __name__ == '__main__':
     torch.manual_seed(opt.manualSeed)
     np.random.seed(opt.manualSeed)
 
+    Log(opt)
     learning = Learning(opt, save_dir)
     learning.start()
