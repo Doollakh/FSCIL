@@ -399,7 +399,24 @@ class Learning:
         cm_display.plot()
         plt.savefig(f'./results/CM_{n_class}.png', dpi=400)
 
-        log_class.data['results'].append({'stage_id': stage_id, 'total_accuracy': total_correct / float(total_testset)})
+        # Data to save as log
+        each_class_total = np.sum(confusion_matrix, axis=1)
+        each_class_true  = np.diagonal(confusion_matrix)
+        if stage_id != 0:
+          old_acc = np.sum(each_class_true[0:20+5*(stage_id-1)]) / np.sum(each_class_total[0:20+5*(stage_id-1)]);old_name = f"0:{20+5*(stage_id-1)}"
+          new_acc = np.sum(each_class_true[20+5*(stage_id-1):]) / np.sum(each_class_total[20+5*(stage_id-1):]);new_name = f"{20+5*(stage_id-1)}:{len(each_class_total)}"
+        else:
+          old_acc = -1;old_name = '0:0'
+          new_acc = np.sum(each_class_true) / np.sum(each_class_total);new_name= '0:20'
+
+
+        log_class.data['results'].append({'stage_id': stage_id, 
+                                          'accuracy': {
+                                              'total'  : total_correct / float(total_testset),
+                                              old_name : old_acc,
+                                              new_name : new_acc
+                                          }
+                                        })
         return total_loss / float(total_testset), total_correct / float(total_testset)
 
     def compute_best_samples(self, classifier):
