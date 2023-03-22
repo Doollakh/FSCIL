@@ -34,3 +34,4 @@ class Log():
         self.data['config']['input_transform'] = self.opt.input_transform
         self.data['config']['KD'] = self.opt.KD
 
+
