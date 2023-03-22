@@ -400,8 +400,9 @@ class Learning:
         plt.savefig(f'./results/CM_{n_class}.png', dpi=400)
 
         # Data to save as log
-        each_class_total = np.sum(confusion_matrix, axis=1)
-        each_class_true  = np.diagonal(confusion_matrix)
+        each_class_total = np.sum(confusion_matrix, axis=1) # total data in each class
+        each_class_true  = np.diagonal(confusion_matrix)    # total true data in eah class
+        # calculate old accuracy and new classes accuracy
         if stage_id != 0:
           old_acc = np.sum(each_class_true[0:20+5*(stage_id-1)]) / np.sum(each_class_total[0:20+5*(stage_id-1)]);old_name = f"0:{20+5*(stage_id-1)}"
           new_acc = np.sum(each_class_true[20+5*(stage_id-1):]) / np.sum(each_class_total[20+5*(stage_id-1):]);new_name = f"{20+5*(stage_id-1)}:{len(each_class_total)}"
@@ -409,13 +410,16 @@ class Learning:
           old_acc = -1;old_name = '0:0'
           new_acc = np.sum(each_class_true) / np.sum(each_class_total);new_name= '0:20'
 
+        accuracy_per_class = {i_c : each_class_true[i_c]/each_class_total[i_c] for i_c in range(len(each_class_total))}
+
 
         log_class.data['results'].append({'stage_id': stage_id, 
                                           'accuracy': {
                                               'total'  : total_correct / float(total_testset),
                                               old_name : old_acc,
                                               new_name : new_acc
-                                          }
+                                          },
+                                          'accuracy_per_class' : accuracy_per_class
                                         })
         return total_loss / float(total_testset), total_correct / float(total_testset)
 
