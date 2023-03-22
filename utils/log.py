@@ -15,4 +15,4 @@ class Log():
 
     # Add data from Opt
     def add_opt(self):
-        print(self.opt)
+        self.data['config']['batchSize'] = self.opt.batchSize

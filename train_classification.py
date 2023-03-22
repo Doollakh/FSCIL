@@ -502,6 +502,7 @@ if __name__ == '__main__':
     torch.manual_seed(opt.manualSeed)
     np.random.seed(opt.manualSeed)
 
-    Log(opt)
+    log_class = Log(opt)
+    log_class.make_json()
     learning = Learning(opt, save_dir)
     learning.start()
