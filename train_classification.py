@@ -56,7 +56,7 @@ class Learning:
         self.order = [2, 3, 4, 10, 14, 17, 19, 21, 22, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 39, 5, 16, 23, 25, 37, 9,
                       12, 13, 20, 24, 0, 1, 6, 34, 38, 7, 8, 11, 15, 18]
         log_class.data['config']['class_order'] = self.order
-        log_class.make_json()
+        # log_class.make_json()
         if self.opt.learning_type == "simple":
             self.classes = None
             self.train(flag)
@@ -65,14 +65,17 @@ class Learning:
             self.classes = np.array([], dtype=int)
 
             self.accuracies = []
-
+            
+            stage_id = 0
             while True:
 
                 skip = False
                 if self.opt.continue_from is not None:
                     skip = self.opt.continue_from > self.n_class
 
-                self.train(flag, _fe, skip, lwf)
+                if skip == True:
+                    stage_id += 1
+                self.train(flag, _fe, skip, lwf, stage_id=stage_id)
 
                 flag = False
                 self.n_class += self.opt.step_num_class
@@ -144,7 +147,7 @@ class Learning:
                 visited[item] += 1
         return visited_in[self.classes].reshape(len(self.classes) * n)
 
-    def train(self, flag=False, _fe=False, skip=False, lwf=False):
+    def train(self, flag=False, _fe=False, skip=False, lwf=False, stage_id=0):
 
         dataset, test_dataset = self.select_dataset()
 
@@ -328,7 +331,7 @@ class Learning:
 
             if self.opt.test_epoch > 0 and (epoch + 1) % self.opt.test_epoch == 0 or (epoch + 1) == epochs:
                 test_loss[epoch], test_acc[epoch] = self.test(classifier_, testdataloader, lwf and not flag,
-                                                              self.n_class, opt.loss_type)
+                                                              self.n_class, opt.loss_type, stage_id)
                 print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
                     epoch + 1, blue('test'), test_loss[epoch], test_acc[epoch]))
 
@@ -347,7 +350,7 @@ class Learning:
             self.accuracies.append(test_acc[-1])
 
     @staticmethod
-    def test(classifier, testdataloader, lwf, n_class, loss_type):
+    def test(classifier, testdataloader, lwf, n_class, loss_type, stage_id):
         total_loss = 0
         total_correct = 0
         total_testset = 0
@@ -395,7 +398,7 @@ class Learning:
         cm_display.plot()
         plt.savefig(f'./results/CM_{n_class}.png', dpi=400)
 
-
+        log_class['config']['results'].append({'stage_id': stage_id, 'total_accuracy': total_correct / float(total_testset)})
         return total_loss / float(total_testset), total_correct / float(total_testset)
 
     def compute_best_samples(self, classifier):
@@ -505,6 +508,7 @@ if __name__ == '__main__':
     np.random.seed(opt.manualSeed)
 
     log_class = Log(opt)
-    log_class.make_json()
+    # log_class.make_json()
     learning = Learning(opt, save_dir)
     learning.start()
+    log_class.make_json()
