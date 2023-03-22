@@ -398,7 +398,7 @@ class Learning:
         cm_display.plot()
         plt.savefig(f'./results/CM_{n_class}.png', dpi=400)
 
-        log_class['results'].append({'stage_id': stage_id, 'total_accuracy': total_correct / float(total_testset)})
+        log_class.data['results'].append({'stage_id': stage_id, 'total_accuracy': total_correct / float(total_testset)})
         return total_loss / float(total_testset), total_correct / float(total_testset)
 
     def compute_best_samples(self, classifier):
