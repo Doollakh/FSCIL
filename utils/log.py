@@ -17,12 +17,11 @@ class Log():
     def add_opt(self):
         self.data['config']['batchSize'] = self.opt.batchSize
         self.data['config']['num_points'] = self.opt.num_points
-        self.data['config']['workers'] = self.opt.workers
         self.data['config']['learning_type'] = self.opt.learning_type
         self.data['config']['loss_type'] = self.opt.loss_type
         self.data['config']['start_num_class'] = self.opt.start_num_class
         self.data['config']['step_num_class'] = self.opt.step_num_class
-        self.data['config']['n_cands'] = self.opt.n_cands
+        self.data['config']['number_of_sample_old_classes'] = self.opt.n_cands
         self.data['config']['dist_temperature'] = self.opt.dist_temperature
         self.data['config']['dist_factor'] = self.opt.dist_factor
         self.data['config']['cands_path'] = self.opt.cands_path
@@ -33,5 +32,6 @@ class Log():
         self.data['config']['feature_transform'] = self.opt.feature_transform
         self.data['config']['input_transform'] = self.opt.input_transform
         self.data['config']['KD'] = self.opt.KD
+    
 
 
