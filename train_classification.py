@@ -55,7 +55,7 @@ class Learning:
 
         self.order = [2, 3, 4, 10, 14, 17, 19, 21, 22, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 39, 5, 16, 23, 25, 37, 9,
                       12, 13, 20, 24, 0, 1, 6, 34, 38, 7, 8, 11, 15, 18]
-        log_class.data['config']['class_order'] = self.order
+        # log_class.data['config']['class_order'] = self.order
         # log_class.make_json()
         if self.opt.learning_type == "simple":
             self.classes = None
