@@ -52,11 +52,32 @@ class Learning:
         flag = True
         if self.opt.continue_from is True:
             assert self.opt.learning_type != 'simple'
+        
+        # select ordering type
+        if self.opt.order == 'changed_order':
+            self.order  = [2, 3, 4, 10, 14, 17, 19, 21, 22, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 39, 5, 16, 23, 25, 37, 9,12, 13, 20, 24, 0, 1, 6, 34, 38, 7, 8, 11, 15, 18]
+            class_names = ['bed', 'bench', 'bookshelf', 'cup', 'dresser', 'guitar', 'lamp', 'mantel', 'monitor', 'plant', 'radio',
+                          'range_hood', 'sink', 'sofa', 'stairs', 'stool', 'table', 'toilet', 'tv_stand', 'xbox', 'bottle',
+                          'glass_box', 'night_stand', 'piano', 'vase', 'cone', 'desk', 'door', 'laptop', 'person', 'airplane',
+                          'bathtub', 'bowl', 'tent', 'wardrobe']
+            
+            
+        elif self.opt.order == 'fscil_order':
+            self.order  = [8,30,0,4,2,37,22,33,35,5,21,36,26,25,7,12,14,23,16,17,28,3,9,34,15,20,18,11,1,29,19,31,13,27,39,32,24,38,10,6]
+            class_names = ['chair','sofa','airplane','bookshelf','bed','vase','monitor','table','toilet','bottle',
+                           'mantel','tv stand','plant','piano','car','desk','dresser','night stand','glass box',
+                           'guitar','range hood','bench','cone','tent','flower pot','laptop','keyboard','curtain',
+                           'bathtub','sink','lamp','stairs','door','radio','xbox','stool','person','wardrobe','cup','bowl']
+        
+        elif self.opt.order == 'orginal_order':
+            self.order = [i for i in range(40)]
+        
+        else:
+            print("You entered wrong ordering type!")
+            exit()
+        np.save('./misc/class_names.npy', np.array(class_names))
 
-        self.order = [2, 3, 4, 10, 14, 17, 19, 21, 22, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 39, 5, 16, 23, 25, 37, 9,
-                      12, 13, 20, 24, 0, 1, 6, 34, 38, 7, 8, 11, 15, 18]
-        # log_class.data['config']['class_order'] = self.order
-        # log_class.make_json()
+
         if self.opt.learning_type == "simple":
             self.classes = None
             self.train(flag)
@@ -518,6 +539,7 @@ if __name__ == '__main__':
     parser.add_argument('--progress', type=bool, default=True,
                         help='has new progress?')
     parser.add_argument('--KD', action='store_true', help='')
+    parser.add_argument('--order', type=str, default='', help='which ordering will used changed_order, org_order, fscil_order')
     opt = parser.parse_args()
     print(opt)
 

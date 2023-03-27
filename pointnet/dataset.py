@@ -21,10 +21,7 @@ def read_ply(filename):
 
 def read_candidates(root, n_cands=3, scanobject=False):
     if not scanobject:
-        classes = ['bed', 'bench', 'bookshelf', 'cup', 'dresser', 'guitar', 'lamp', 'mantel', 'monitor', 'plant', 'radio',
-                'range_hood', 'sink', 'sofa', 'stairs', 'stool', 'table', 'toilet', 'tv_stand', 'xbox', 'bottle',
-                'glass_box', 'night_stand', 'piano', 'vase', 'cone', 'desk', 'door', 'laptop', 'person', 'airplane',
-                'bathtub', 'bowl', 'tent', 'wardrobe']
+        classes = list(np.load('./misc/class_names.npy'))
     else:
         classes = ['bag','bin','box','bed','chair','desk','display','door','shelves','table','cabinets','pillow','sink','sofa','toilet']
 
