@@ -146,7 +146,7 @@ class PointNetfeat(nn.Module):
 
 
 class PointNetCls(nn.Module):
-    def __init__(self, k=2, feature_transform=False, last_fc=False, log_softmax=False, input_transform=False):
+    def __init__(self, k=2, feature_transform=False, last_fc=False, log_softmax=False, input_transform=False, log=True):
         super(PointNetCls, self).__init__()
         self.feature_transform = feature_transform
         self.feat = PointNetfeat(global_feat=True, feature_transform=feature_transform, input_transform=input_transform)
@@ -154,6 +154,7 @@ class PointNetCls(nn.Module):
         self.last_fc = last_fc
         self.log_softmax = log_softmax
         self.feature = None
+        self.log = log
 
     def forward(self, x):
         x, trans, trans_feat, _ = self.feat(x)
@@ -161,7 +162,10 @@ class PointNetCls(nn.Module):
         if self.last_fc:
             x = self.fc3(x)
         if self.log_softmax:
-            x = F.log_softmax(x, dim=1)
+            if self.log:
+                x = F.log_softmax(x, dim=1)
+            else:
+                x = F.softmax(x, dim=1)
 
         return x, trans, trans_feat 
 

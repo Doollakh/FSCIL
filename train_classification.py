@@ -198,10 +198,10 @@ class Learning:
 
         if lwf and not flag:
             classifier = PointNetCls(k=self.n_class - self.opt.step_num_class,
-                                     feature_transform=self.opt.feature_transform, input_transform=self.opt.input_transform)
+                                     feature_transform=self.opt.feature_transform, input_transform=self.opt.input_transform, log=True if self.opt.loss_type != 'focal_loss' else False)
             # todo save classifier after first task and save new_model and second task
         else:
-            classifier = PointNetCls(k=self.n_class, feature_transform=self.opt.feature_transform, input_transform=self.opt.input_transform)
+            classifier = PointNetCls(k=self.n_class, feature_transform=self.opt.feature_transform, input_transform=self.opt.input_transform, log=True if self.opt.loss_type != 'focal_loss' else False)
 
         epochs = opt.nepoch
         if _fe and not flag:
