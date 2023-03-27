@@ -75,7 +75,9 @@ class Learning:
         else:
             print("You entered wrong ordering type!")
             exit()
+
         np.save('./misc/class_names.npy', np.array(class_names))
+        log_class.data['config']['order'] = self.opt.order
 
 
         if self.opt.learning_type == "simple":
