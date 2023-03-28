@@ -24,7 +24,7 @@ def read_candidates(root, n_cands=3, dataset_type='modelnet40'):
         classes = list(np.load('./misc/class_names.npy'))
     elif dataset_type == 'scanobjects':
         classes = ['bag','bin','box','bed','chair','desk','display','door','shelves','table','cabinets','pillow','sink','sofa','toilet']
-    elif dataset_type == 'scanobjects':
+    elif dataset_type == 'modelnet40_scanobjects':
         classes = ['airplane','bathhub','bottle','bowl','car','cone','cup','curtain','flower pot','glass box','guitar','keyboard','lamp','laptop','mantel','night stand','person','piano','plant','radio','range hood','stairs','tent','tv stand','vase','cabinet','chair','desk','display','door','shelf','table','bed','sink','sofa','toilet']
 
     n = len(classes)
