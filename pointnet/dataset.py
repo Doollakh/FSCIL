@@ -447,7 +447,7 @@ class ModelNet40_ScanObjects(data.Dataset):
 
         if partition == 'train' and few is not None:
             ids = []
-            c = np.zeros(15)
+            c = np.zeros(len(self.classes))
             for i, j in enumerate(self.label):
                 if c[j] < few:
                     ids.append(i)
