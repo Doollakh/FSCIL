@@ -39,6 +39,7 @@ class Learning:
         self.accuracies = None
         self.order = None
         self.num_classes = 0
+        self.diff = 0
 
     def start(self):
 
@@ -95,6 +96,7 @@ class Learning:
             self.accuracies = []
             
             stage_id = 0
+            temp_flag = True
             while True:
 
                 skip = False
@@ -108,11 +110,24 @@ class Learning:
 
                 flag = False
                 self.n_class += self.opt.step_num_class
-                if self.n_class > self.num_classes:
+                if self.num_classes+self.opt.step_num_class == self.n_class:
                     num_exemplar = '_' + str(
                         self.opt.exemplar_num) if _fe and not self.opt.learning_type == 'forgetting' else ''
                     np.save(f'{self.opt.learning_type}{num_exemplar}.npy', self.accuracies)
                     break
+
+                if self.n_class > self.num_classes:
+                    for i in range(self.n_class-self.num_classes+1):
+                        if self.n_class-i <= self.num_classes:
+                            self.diff += i-1
+                            self.n_class -= i-1
+                            temp_flag = not temp_flag
+                            break
+                    if temp_flag:
+                      num_exemplar = '_' + str(
+                          self.opt.exemplar_num) if _fe and not self.opt.learning_type == 'forgetting' else ''
+                      np.save(f'{self.opt.learning_type}{num_exemplar}.npy', self.accuracies)
+                      break
 
     # 20, 25, 30, 35, 40
     # 20, 5,  5,  5,  5
@@ -235,7 +250,7 @@ class Learning:
             pass
 
         if lwf and not flag:
-            classifier = PointNetCls(k=self.n_class - self.opt.step_num_class,
+            classifier = PointNetCls(k=self.n_class - self.opt.step_num_class+self.diff,
                                      feature_transform=self.opt.feature_transform, input_transform=self.opt.input_transform, log=True if self.opt.loss_type != 'focal_loss' else False)
             # todo save classifier after first task and save new_model and second task
         else:
@@ -253,7 +268,7 @@ class Learning:
             print('loading previous model')
             classifier.feat.load_state_dict(
                 torch.load('%s/cls_model_%s_%d.pth' % (
-                    self.save_dir, self.opt.learning_type, self.n_class - self.opt.step_num_class)))
+                    self.save_dir, self.opt.learning_type, self.n_class - self.opt.step_num_class+self.diff)))
 
         if self.opt.model != '':
             classifier.load_state_dict(torch.load(self.opt.model))
@@ -298,7 +313,7 @@ class Learning:
         elif self.opt.loss_type == 'focal_loss':
             classifier.last_fc = True
             classifier.log_softmax = True
-            W = torch.FloatTensor([10 if i < self.n_class - self.opt.step_num_class else 0.1 for i in range(self.n_class)]).cuda()
+            W = torch.FloatTensor([10 if i < self.n_class - self.opt.step_num_class+self.diff else 0.1 for i in range(self.n_class)]).cuda()
             point_loss = FocalLoss(gamma=2, weights=W).cuda()
         else:
             classifier.last_fc = False
@@ -307,7 +322,7 @@ class Learning:
         if lwf and not flag:
             kd_loss = KnowlegeDistilation(T=float(self.opt.dist_temperature)).cuda()
             shared_model = classifier.copy()
-            new_model = PointNetLwf(shared_model, old_k=self.n_class - self.opt.step_num_class,
+            new_model = PointNetLwf(shared_model, old_k=self.n_class - self.opt.step_num_class+self.diff,
                                     new_k=self.opt.step_num_class).cuda()
             print(new_model)
         
