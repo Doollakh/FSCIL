@@ -268,13 +268,25 @@ def load_data(root, partition):
 
 
 class ModelNet40(data.Dataset):
-    def __init__(self, root, num_points, partition='train', few=None, from_candidates=False,n_cands=3,cands_path='/content'):
+    def __init__(self, root, num_points, partition='train', few=None, from_candidates=False,n_cands=3,cands_path='/content', aligned = False):
 
         self.memory_candidates = None
         if from_candidates:
             self.memory_candidates = read_candidates(cands_path,n_cands)
 
-        self.data, self.label = load_data(root, partition)
+        if aligned:
+            if partition == 'train':
+                root_data = os.path.join(root, 'modelnet40_aligned','train_data.h5')
+            elif partition == 'test':
+                root_data = os.path.join(root, 'modelnet40_aligned','test_data.h5')
+
+            # Reading aligned data
+            f = h5py.File(root_data)
+            self.data  = f['data'][:].astype('float32')
+            self.label = f['label'][:].astype('int8')
+
+        else:
+            self.data, self.label = load_data(root, partition)
         self.num_points = num_points
         self.partition = partition
 

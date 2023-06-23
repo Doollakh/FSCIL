@@ -154,10 +154,10 @@ class Learning:
             else:
                 few = self.opt.few_shots if self.opt.f else None
                 dataset = ModelNet40(root=self.opt.dataset, partition='train', num_points=self.opt.num_points, few=few
-                                     , from_candidates=self.opt.learning_type == 'bCandidate',n_cands=self.opt.n_cands,cands_path=self.opt.cands_path)
+                                     , from_candidates=self.opt.learning_type == 'bCandidate',n_cands=self.opt.n_cands,cands_path=self.opt.cands_path, aligned=self.opt.aligned)
 
                 test_dataset = ModelNet40(root=self.opt.dataset, partition='test', num_points=self.opt.num_points,
-                                          few=None)
+                                          few=None, aligned=self.opt.aligned)
 
             self.num_classes = len(dataset.classes)
             dataset.set_order(self.order)
@@ -572,6 +572,7 @@ if __name__ == '__main__':
                         help='has new progress?')
     parser.add_argument('--KD', action='store_true', help='')
     parser.add_argument('--order', type=str, default='', help='which ordering will used changed_order, org_order, fscil_order')
+    parser.add_argument('--aligned', type=bool, default=False, help='Do you want to use aligned modelnet40 dataset or not')
     opt = parser.parse_args()
     print(opt)
 
