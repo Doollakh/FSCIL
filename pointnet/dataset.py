@@ -28,7 +28,7 @@ def read_candidates(root, n_cands=3, dataset_type='modelnet40'):
         classes = ['airplane','bathhub','bottle','bowl','car','cone','cup','curtain','flower pot','glass box','guitar','keyboard','lamp','laptop','mantel','night stand','person','piano','plant','radio','range hood','stairs','tent','tv stand','vase','cabinet','chair','desk','display','door','shelf','table','bed','sink','sofa','toilet']
 
     n = len(classes)
-    data = np.zeros(shape=(n * n_cands, 2048, 3))
+    data = np.zeros(shape=(n * n_cands, 1024, 3))
     for j, c in enumerate(classes):
         for i in range(n_cands):
             filename = f'{root}/{c}_{i}.ply'
@@ -289,6 +289,8 @@ class ModelNet40(data.Dataset):
             self.data, self.label = load_data(root, partition)
         self.num_points = num_points
         self.partition = partition
+
+        self.data = self.data[:,:self.num_points,:]
 
         self.cat = {}
         with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../misc/modelnet_id.txt'), 'r') as f:
