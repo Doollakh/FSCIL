@@ -258,7 +258,7 @@ class Learning:
 
         epochs = opt.nepoch
         if _fe and not flag:
-            epochs = 30
+            epochs = 120
 
         if skip:
             print('loading previous model')
