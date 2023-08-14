@@ -7,7 +7,7 @@ import open3d as o3d
 import os
 import torch
 
-def simple_clustring(dataset, classifier, n_class, classes_name, save_path):
+def simple_clustring(dataset, classifier, n_class, classes_name, save_path, stage_id, start_class):
   dataloader = torch.utils.data.DataLoader(
                   dataset,
                   batch_size=32,
@@ -30,7 +30,9 @@ def simple_clustring(dataset, classifier, n_class, classes_name, save_path):
 
   uniq = np.unique(y, return_counts=True)[1]
   result = {i:[] for i in range(n_class)}
-  for i in range(n_class):
+
+  which_classes = range(n_class) if stage_id == 1 else range(start_class,n_class )
+  for i in which_classes:
       w = np.where(y == i)[0]
       cX = X[w]
 
