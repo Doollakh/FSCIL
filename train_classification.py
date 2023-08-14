@@ -228,7 +228,7 @@ class Learning:
 
 
           # make samples
-          simple_clustring(temp_dataset, temp_classifier, 40, self.class_names, best_save_path)
+          simple_clustring(temp_dataset, temp_classifier, 40, self.class_names, best_save_path, stage_id, prv_n_class-self.opt.step_num_class)
           print("\n")
         #########################################################
         
