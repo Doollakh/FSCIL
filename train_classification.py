@@ -7,6 +7,7 @@ from sklearn.metrics import confusion_matrix
 from sklearn import metrics
 from focal_loss.focal_loss import FocalLoss
 import matplotlib.pyplot as plt 
+import os
 
 import numpy as np
 import torch
@@ -21,6 +22,7 @@ from tqdm import tqdm
 from pointnet.dataset import ModelNetDataset, ModelNet40, ScanObjects, ModelNet40_ScanObjects
 from pointnet.losses import KnowlegeDistilation, PointNetLoss
 from pointnet.model import PointNetCls, PointNetLwf
+from pointnet.bests import simple_clustring
 # learning_type = simple, joint, exemplar, lwf, bExemplar
 # forgetting
 from utils.general import increment_path
@@ -202,6 +204,34 @@ class Learning:
         return visited_in[self.classes].reshape(len(self.classes) * n)
 
     def train(self, flag=False, _fe=False, skip=False, lwf=False, stage_id=0):
+        ################### Calculate bests ##################
+        if stage_id != 0 and self.opt.best_in_stage:
+          print(f"\n I'm trying to find bests {self.n_class} of stage : {stage_id}")
+
+          # load model
+          prv_n_class = self.n_class-self.opt.step_num_class if stage_id != 0 else self.n_class
+          temp_classifier = PointNetCls(k=prv_n_class, feature_transform=False, input_transform=False, last_fc=True, log_softmax=True).copy()
+
+          model_path = f'{self.save_dir}/cls_model_bCandidate_{prv_n_class}.pth' if stage_id != 0 else f'/content/FSCIL/cls/cls_model_bCandidate_{prv_n_class}.pth' 
+          temp_classifier.feat.load_state_dict(torch.load(model_path))
+          temp_classifier = temp_classifier.cuda()
+
+          # Load dataset
+          temp_dataset = ModelNet40(root=self.opt.dataset, partition='train', num_points=self.opt.num_points,aligned = self.opt.aligned)
+          temp_dataset.set_order(self.order)
+
+          # saving folder
+          best_save_path = "./temp_samples"
+          if not os.path.exists(best_save_path):
+            os.makedirs(best_save_path)
+
+
+          # make samples
+          simple_clustring(temp_dataset, temp_classifier, 40, self.class_names, best_save_path)
+          print("\n")
+        #########################################################
+        
+
 
         dataset, test_dataset = self.select_dataset()
 
@@ -573,6 +603,8 @@ if __name__ == '__main__':
     parser.add_argument('--KD', action='store_true', help='')
     parser.add_argument('--order', type=str, default='', help='which ordering will used changed_order, org_order, fscil_order')
     parser.add_argument('--aligned', type=bool, default=False, help='Do you want to use aligned modelnet40 dataset or not')
+    parser.add_argument('--best_in_stage', type=bool, default=False, help='Calculate best in files')
+    
     opt = parser.parse_args()
     print(opt)
 

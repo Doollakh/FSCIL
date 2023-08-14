@@ -362,8 +362,10 @@ class ScanObjects(data.Dataset):
         # Read Candidates
         self.memory_candidates = None
         if from_candidates:
-            self.memory_candidates = read_candidates(cands_path,n_cands,dataset_type='scanpbjects')
-
+            try:
+                self.memory_candidates = read_candidates(cands_path,n_cands,dataset_type='scanpbjects')
+            except:
+                print('(NOTE)  Loading bests is not completed for this stage!')
         # Load Scan objects data from h5 file
         if partition == 'train':
             root = os.path.join(root, 'scan_objects','training_objectdataset_nobg.h5')
