@@ -222,6 +222,7 @@ class Learning:
 
           # saving folder
           best_save_path = "./temp_samples"
+          self.opt.cands_path = best_save_path
           if not os.path.exists(best_save_path):
             os.makedirs(best_save_path)
 
