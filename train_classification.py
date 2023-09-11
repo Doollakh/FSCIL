@@ -366,10 +366,14 @@ class Learning:
         elif self.opt.KD and self.opt.learning_type == 'bCandidate' and not flag:
             kd_loss = KnowlegeDistilation(T=float(self.opt.dist_temperature)).cuda()
 
+        train_loss = []
+        train_acc  = []
         for epoch in range(epochs):
             scheduler.step()
             n = len(dataloader)
             pbar = tqdm(total=n, desc=f'Epoch: {epoch + 1}/{epochs}  ', ncols=110)
+            loss_sum = 0
+            acc_sum = 0
             for i, data in enumerate(dataloader, 0):
                 points, target = data
                 points = points.float()
@@ -412,16 +416,25 @@ class Learning:
 
                 pbar.update(1)
                 acc = round(correct.item() / float(self.opt.batchSize), 2)
+
+                acc_sum += acc
+                loss_sum += loss.item()
                 if lwf and not flag:
                     pbar.postfix = f'loss: {round(loss.item(), 2)}, acc: {acc}, kd_loss: {round(kdl.item(), 2)}'
                 else:
                     pbar.postfix = f'loss: {round(loss.item(), 2)}, acc: {acc}'
 
+
             pbar.close()
 
+            train_loss.append(loss_sum / n)
+            train_acc.append(acc_sum / n)
+
+            test_loss[epoch], test_acc[epoch] = self.test(classifier_, testdataloader, lwf and not flag,
+                                                              self.n_class, opt.loss_type, stage_id, last=False)
             if self.opt.test_epoch > 0 and (epoch + 1) % self.opt.test_epoch == 0 or (epoch + 1) == epochs:
                 test_loss[epoch], test_acc[epoch] = self.test(classifier_, testdataloader, lwf and not flag,
-                                                              self.n_class, opt.loss_type, stage_id)
+                                                              self.n_class, opt.loss_type, stage_id, last=True)
                 print('[Epoch %d] %s loss: %f accuracy: %f\n' % (
                     epoch + 1, blue('test'), test_loss[epoch], test_acc[epoch]))
 
@@ -439,8 +452,30 @@ class Learning:
         if _fe:
             self.accuracies.append(test_acc[-1])
 
+        ########################## PLOTTING EVERYTHINGS #############################    
+        plt.figure()
+        plt.rcParams.update({'font.size': 7})
+
+        plt.subplot(2, 2, 1)
+        plt.title('Train Loss')
+        plt.plot(train_loss)
+
+        plt.subplot(2, 2, 2)
+        plt.title('test Loss')
+        plt.plot(test_loss)
+
+        plt.subplot(2, 2, 3)
+        plt.title('train acc')
+        plt.plot(train_acc)
+
+        plt.subplot(2, 2, 4)
+        plt.title('test acc')
+        plt.plot(test_acc)
+
+        plt.savefig(f'./results/{stage_id}_plots.png')
+
     @staticmethod
-    def test(classifier, testdataloader, lwf, n_class, loss_type, stage_id):
+    def test(classifier, testdataloader, lwf, n_class, loss_type, stage_id, last=False):
         total_loss = 0
         total_correct = 0
         total_testset = 0
@@ -453,7 +488,7 @@ class Learning:
 
         pred_list   = [] 
         target_list = []
-        for i, data in tqdm(enumerate(testdataloader, 0)):
+        for i, data in enumerate(testdataloader, 0):
             points, target = data
             target = target.type(torch.LongTensor)
             points = points.float()
@@ -482,11 +517,12 @@ class Learning:
 
         
         # Calculate confusion matrix
-        plt.rcParams.update({'font.size': 4})
         confusion_matrix = metrics.confusion_matrix(target_list, pred_list)
-        cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
-        cm_display.plot()
-        plt.savefig(f'./results/CM_{n_class}.png', dpi=400)
+        if last:
+          plt.rcParams.update({'font.size': 4})
+          cm_display = metrics.ConfusionMatrixDisplay(confusion_matrix = confusion_matrix)
+          cm_display.plot()
+          plt.savefig(f'./results/CM_{n_class}.png', dpi=400)
 
         # Data to save as log
         each_class_total = np.sum(confusion_matrix, axis=1) # total data in each class
