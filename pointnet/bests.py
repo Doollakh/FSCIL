@@ -105,7 +105,7 @@ def spectral_clustring(dataset, classifier, n_class, classes_name, save_path, st
   result = {i:[] for i in range(n_class)}
   which_classes = range(n_class) if stage_id == 1 else range(start_class,n_class)
 
-  for class_idx in range(which_classes):
+  for class_idx in which_classes:
     print(f'class {class_idx}:{classes_name[class_idx]}')
     X = np.array([])
     y = np.array([])
