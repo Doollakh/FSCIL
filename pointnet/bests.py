@@ -16,7 +16,9 @@ import numpy as np
 import scipy.spatial
 import scipy
 
-from spectural import SpectralClusteringMod
+from pointnet.specteral import SpectralClusteringMod
+
+
 cos = lambda in1, in2: np.dot(in1, in2) / (np.linalg.norm(in1) * np.linalg.norm(in2))
 
 
@@ -220,7 +222,7 @@ def spectral_clustring_mod(dataset, classifier, n_class, classes_name, save_path
 
     # break
     clustering = SpectralClusteringMod(n_clusters=5, random_state=0,affinity='precomputed').fit(affinity_matrix)
-    
+
     # select groups
     for c_label in range(np.max(clustering.labels_)+1):
       selected_X = X[clustering.labels_ == c_label]
