@@ -75,6 +75,7 @@ class Learning:
             
             elif self.opt.order == 'orginal_order':
                 self.order = [i for i in range(40)]
+                self.class_names = ['airplane','bathhub','bottle','bowl','car','cone','cup','curtain','flower pot','glass box','guitar','keyboard','lamp','laptop','mantel','night stand','person','piano','plant','radio','range hood','stairs','tent','tv stand','vase','cabinet','chair','desk','display','door','shelf','table','bed','sink','sofa','toilet']
             
             else:
                 print("You entered wrong ordering type!")
