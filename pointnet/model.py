@@ -139,10 +139,10 @@ class PointNetfeat(nn.Module):
         else:
             x = x.view(-1, 1024, 1).repeat(1, 1, n_pts)
             features = torch.cat([x, pointfeat], 1)
-
+        temp = features
         features = F.relu(self.bn4(self.fc1(features)))
         features = F.relu(self.bn5(self.dropout(self.fc2(features))))
-        return features, trans, trans_feat, h
+        return features, trans, trans_feat, h, temp
 
 
 class PointNetCls(nn.Module):
@@ -157,7 +157,7 @@ class PointNetCls(nn.Module):
         self.log = log
 
     def forward(self, x):
-        x, trans, trans_feat, _ = self.feat(x)
+        x, trans, trans_feat, _, _ = self.feat(x)
         self.feature = x
         if self.last_fc:
             x = self.fc3(x)

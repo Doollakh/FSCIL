@@ -218,7 +218,10 @@ class Learning:
             temp_classifier = temp_classifier.cuda()
 
             # Load dataset
-            temp_dataset = ModelNet40(root=self.opt.dataset, partition='train', num_points=self.opt.num_points,aligned = self.opt.aligned)
+            if self.opt.dataset_type == 'modelnet40':
+                temp_dataset = ModelNet40(root=self.opt.dataset, partition='train', num_points=self.opt.num_points,aligned = self.opt.aligned)
+            elif self.opt.dataset_type == 'modelnet40_scanobjects':
+                temp_dataset = ModelNet40_ScanObjects(root=self.opt.dataset, partition='train', num_points=self.opt.num_points)
             temp_dataset.set_order(self.order)
 
             # saving folder

@@ -36,7 +36,7 @@ def simple_clustring(dataset, classifier, n_class, classes_name, save_path, stag
       points = points.transpose(2, 1)
       points, target = points.cuda(), target.cuda()
       classifier = classifier.eval()
-      pred, _, _, _ = classifier.feat(points)
+      _, _, _, _,pred = classifier.feat(points)
 
       X = np.concatenate((X, pred.cpu().detach().numpy()), 0) if i != 0 else pred.cpu().detach().numpy()
       y = np.concatenate((y, target.cpu().detach().numpy()), 0) if i != 0 else target.cpu().detach().numpy()
@@ -197,7 +197,7 @@ def spectral_clustring_mod(dataset, classifier, n_class, classes_name, save_path
           points = points[which]
 
           classifier = classifier.eval()
-          ـ , ـ, ـ, pred = classifier.feat(points)
+          ـ , ـ, ـ, pred, _ = classifier.feat(points)
 
           X = np.concatenate((X, pred.detach().cpu().numpy()), 0) if len(X) != 0 else pred.cpu().detach().numpy()
           y = np.concatenate((y, target), 0) if len(y) != 0 else target
