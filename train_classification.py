@@ -230,9 +230,9 @@ class Learning:
 
             # make samples
             if self.opt.best_type == 'simple':
-                simple_clustring(temp_dataset, temp_classifier, 40, self.class_names, best_save_path, stage_id, prv_n_class-self.opt.step_num_class)
+                simple_clustring(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class-self.opt.step_num_class)
             elif self.opt.best_type == 'spectral':
-                spectral_clustring_mod(temp_dataset, temp_classifier, 40, self.class_names, best_save_path, stage_id, prv_n_class-self.opt.step_num_class)
+                spectral_clustring_mod(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class-self.opt.step_num_class)
 
 
             print("\n")
