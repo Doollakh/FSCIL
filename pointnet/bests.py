@@ -46,7 +46,8 @@ def simple_clustring(dataset, classifier, n_class, classes_name, save_path, stag
   uniq = np.unique(y, return_counts=True)[1]
   result = {i:[] for i in range(n_class)}
 
-  for i in range(start_class):
+  which_classes = range(start_class) if stage_id == 1 else range(start_class-5,start_class)
+  for i in which_classes:
       w = np.where(y == i)[0]
       cX = X[w]
 
@@ -105,8 +106,8 @@ def spectral_clustring(dataset, classifier, n_class, classes_name, save_path, st
   print('computing best samples...')
 
   result = {i:[] for i in range(n_class)}
-
-  for class_idx in range(start_class):
+  which_classes = range(start_class) if stage_id == 1 else range(start_class-5,start_class)
+  for class_idx in which_classes:
     print(f'class {class_idx}:{classes_name[class_idx]}')
     X = np.array([])
     y = np.array([])
@@ -176,7 +177,8 @@ def spectral_clustring_mod(dataset, classifier, n_class, classes_name, save_path
 
   result = {i:[] for i in range(n_class)}
 
-  for class_idx in range(start_class):
+  which_classes = range(start_class) if stage_id == 1 else range(start_class-5,start_class)
+  for class_idx in which_classes:
     print(f'class {class_idx}:{classes_name[class_idx]}')
     X = np.array([])
     y = np.array([])
