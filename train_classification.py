@@ -18,6 +18,8 @@ import torch.utils.data
 from matplotlib import pyplot as plt
 from tqdm import tqdm
 
+import shutil
+
 
 from pointnet.dataset import ModelNetDataset, ModelNet40, ScanObjects, ModelNet40_ScanObjects
 from pointnet.losses import KnowlegeDistilation, PointNetLoss
@@ -226,16 +228,18 @@ class Learning:
 
             # saving folder
             best_save_path = "./temp_samples"
-            self.opt.cands_path = best_save_path
             if not os.path.exists(best_save_path):
-                os.makedirs(best_save_path)
+                shutil.rmtree(best_save_path)
+                shutil.copytree(self.opt.cands_path, best_save_path)
+            
+            self.opt.cands_path = best_save_path
 
 
             # make samples
             if self.opt.best_type == 'simple':
-                simple_clustring(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class-self.opt.step_num_class)
+                simple_clustring(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class)
             elif self.opt.best_type == 'spectral':
-                spectral_clustring_mod(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class-self.opt.step_num_class)
+                spectral_clustring_mod(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class)
 
 
             print("\n")

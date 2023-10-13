@@ -46,8 +46,7 @@ def simple_clustring(dataset, classifier, n_class, classes_name, save_path, stag
   uniq = np.unique(y, return_counts=True)[1]
   result = {i:[] for i in range(n_class)}
 
-  which_classes = range(n_class) if stage_id == 1 else range(start_class,n_class )
-  for i in which_classes:
+  for i in range(start_class):
       w = np.where(y == i)[0]
       cX = X[w]
 
@@ -72,7 +71,7 @@ def simple_clustring(dataset, classifier, n_class, classes_name, save_path, stag
   pcd = o3d.geometry.PointCloud()
 
   # Save as best exampler
-  for i in range(n_class):
+  for i in range(start_class):
     id_list_of_top = result[i]
     for j in range(len(id_list_of_top)):
       pcd.points = o3d.utility.Vector3dVector(dataset[id_list_of_top[j]][0])
@@ -106,9 +105,8 @@ def spectral_clustring(dataset, classifier, n_class, classes_name, save_path, st
   print('computing best samples...')
 
   result = {i:[] for i in range(n_class)}
-  which_classes = range(n_class) if stage_id == 1 else range(start_class,n_class)
 
-  for class_idx in which_classes:
+  for class_idx in range(start_class):
     print(f'class {class_idx}:{classes_name[class_idx]}')
     X = np.array([])
     y = np.array([])
@@ -159,7 +157,7 @@ def spectral_clustring(dataset, classifier, n_class, classes_name, save_path, st
     pcd = o3d.geometry.PointCloud()
 
     # Save as best exampler
-    for i in range(n_class):
+    for i in range(start_class):
       id_list_of_top = result[i]
       for j in range(len(id_list_of_top)):
         pcd.points = o3d.utility.Vector3dVector(dataset[id_list_of_top[j]][0])
@@ -177,9 +175,8 @@ def spectral_clustring_mod(dataset, classifier, n_class, classes_name, save_path
   print('computing best samples...')
 
   result = {i:[] for i in range(n_class)}
-  which_classes = range(n_class) if stage_id == 1 else range(start_class,n_class)
 
-  for class_idx in which_classes:
+  for class_idx in range(start_class):
     print(f'class {class_idx}:{classes_name[class_idx]}')
     X = np.array([])
     y = np.array([])
@@ -239,7 +236,7 @@ def spectral_clustring_mod(dataset, classifier, n_class, classes_name, save_path
     pcd = o3d.geometry.PointCloud()
 
     # Save as best exampler
-    for i in range(n_class):
+    for i in range(start_class):
       id_list_of_top = result[i]
       for j in range(len(id_list_of_top)):
         pcd.points = o3d.utility.Vector3dVector(dataset[id_list_of_top[j]][0])
