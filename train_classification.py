@@ -228,8 +228,10 @@ class Learning:
 
             # saving folder
             best_save_path = "./temp_samples"
+            if os.path.exists(best_save_path) and stage_id == 1:
+              shutil.rmtree(best_save_path)
+
             if not os.path.exists(best_save_path):
-                shutil.rmtree(best_save_path)
                 shutil.copytree(self.opt.cands_path, best_save_path)
             
             self.opt.cands_path = best_save_path
