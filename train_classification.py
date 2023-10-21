@@ -59,16 +59,8 @@ class Learning:
             assert self.opt.learning_type != 'simple'
         
         # select ordering type
-        if self.opt.dataset_type == 'modelnet40':
-            if self.opt.order == 'changed_order':
-                self.order  = [2, 3, 4, 10, 14, 17, 19, 21, 22, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 39, 5, 16, 23, 25, 37, 9,12, 13, 20, 24, 0, 1, 6, 34, 38, 7, 8, 11, 15, 18]
-                self.class_names = ['bed', 'bench', 'bookshelf', 'cup', 'dresser', 'guitar', 'lamp', 'mantel', 'monitor', 'plant', 'radio',
-                            'range_hood', 'sink', 'sofa', 'stairs', 'stool', 'table', 'toilet', 'tv_stand', 'xbox', 'bottle',
-                            'glass_box', 'night_stand', 'piano', 'vase', 'cone', 'desk', 'door', 'laptop', 'person', 'airplane',
-                            'bathtub', 'bowl', 'tent', 'wardrobe']
-                
-                
-            elif self.opt.order == 'fscil_order':
+        if self.opt.dataset_type == 'modelnet40':      
+            if self.opt.order == 'fscil_order':
                 self.order  = [8,30,0,4,2,37,22,33,35,5,21,36,26,25,7,12,14,23,16,17,28,3,9,34,15,20,18,11,1,29,19,31,13,27,39,32,24,38,10,6]
                 self.class_names = ['chair','sofa','airplane','bookshelf','bed','vase','monitor','table','toilet','bottle',
                             'mantel','tv stand','plant','piano','car','desk','dresser','night stand','glass box',
@@ -142,7 +134,7 @@ class Learning:
         temp = np.random.choice(len(r), size=count, replace=False)
         return r[temp]
 
-    def select_dataset(self):
+    def select_dataset(self, stage_id):
         if self.opt.dataset_type == 'modelnet40':
             if not self.opt.is_h5:
                 dataset = ModelNetDataset(
@@ -158,11 +150,20 @@ class Learning:
 
             else:
                 few = self.opt.few_shots if self.opt.f else None
-                dataset = ModelNet40(root=self.opt.dataset, partition='train', num_points=self.opt.num_points, few=few
-                                     , from_candidates=self.opt.learning_type == 'bCandidate',n_cands=self.opt.n_cands,cands_path=self.opt.cands_path, aligned=self.opt.aligned)
+                if stage_id == 0:
+                  dataset = ModelNet40(root=self.opt.dataset, partition='train', num_points=self.opt.num_points, few=few
+                                      , from_candidates=False,n_cands=self.opt.n_cands,cands_path=self.opt.cands_path, aligned=self.opt.aligned)
 
-                test_dataset = ModelNet40(root=self.opt.dataset, partition='test', num_points=self.opt.num_points,
-                                          few=None, aligned=self.opt.aligned)
+                  test_dataset = ModelNet40(root=self.opt.dataset, partition='test', num_points=self.opt.num_points,
+                                            few=None, aligned=self.opt.aligned)
+
+                else:
+
+                  dataset = ModelNet40(root=self.opt.dataset, partition='train', num_points=self.opt.num_points, few=few
+                                      , from_candidates=self.opt.learning_type == 'bCandidate',n_cands=self.opt.n_cands,cands_path=self.opt.cands_path, aligned=self.opt.aligned)
+
+                  test_dataset = ModelNet40(root=self.opt.dataset, partition='test', num_points=self.opt.num_points,
+                                            few=None, aligned=self.opt.aligned)
 
             self.num_classes = len(dataset.classes)
             dataset.set_order(self.order)
@@ -249,7 +250,7 @@ class Learning:
         
 
 
-        dataset, test_dataset = self.select_dataset()
+        dataset, test_dataset = self.select_dataset(stage_id)
 
         if self.classes is not None:
             if flag:
@@ -322,7 +323,7 @@ class Learning:
         if self.opt.KD and self.opt.learning_type == 'bCandidate':
             old_classifire = classifier.copy().cuda()
 
-        optimizer = optim.Adam(classifier.parameters(), lr=0.001, betas=(0.9, 0.999))
+        optimizer = optim.Adam(classifier.parameters(), lr=0.0001, betas=(0.9, 0.999))
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
         classifier.cuda()
 
@@ -562,7 +563,7 @@ class Learning:
         if self.opt.learning_type == 'bExemplar':
             best_exemplar = Path('utils/best_exemplar.npy')
             if not best_exemplar.exists():
-                dataset, _ = self.select_dataset()
+                dataset, _ = self.select_dataset(stage_id = 1)
                 loader = torch.utils.data.DataLoader(
                     dataset,
                     batch_size=self.opt.batchSize,

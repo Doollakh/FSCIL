@@ -25,16 +25,19 @@ def read_candidates(root, n_cands=3, dataset_type='modelnet40'):
     elif dataset_type == 'scanobjects':
         classes = ['bag','bin','box','bed','chair','desk','display','door','shelves','table','cabinets','pillow','sink','sofa','toilet']
     elif dataset_type == 'modelnet40_scanobjects':
-        classes = ['airplane','bathhub','bottle','bowl','car','cone','cup','curtain','flower pot','glass box','guitar','keyboard','lamp','laptop','mantel','night stand','person','piano','plant','radio','range hood','stairs','tent','tv stand','vase','cabinet','chair','desk','display','door','shelf','table','bed','sink','sofa','toilet']
+        classes = ['airplane','bathtub','bottle','bowl','car','cone','cup','curtain','flower pot','glass box','guitar','keyboard','lamp','laptop','mantel','night stand','person','piano','plant','radio','range hood','stairs','tent','tv stand','vase','cabinet','chair','desk','display','door','shelf','table','bed','sink','sofa','toilet']
 
     n = len(classes)
     data = np.zeros(shape=(n * n_cands, 1024, 3))
     for j, c in enumerate(classes):
         for i in range(n_cands):
-            filename = f'{root}/{c}_{i}.ply'
-            # read filename.ply to numpy array
-            plydata = read_ply(filename)
-            data[j * n_cands + i, :1024, :] = plydata #/ np.max(np.abs(plydata))
+            try:
+              filename = f'{root}/{c}_{i}.ply'
+              # read filename.ply to numpy array
+              plydata = read_ply(filename)
+              data[j * n_cands + i, :1024, :] = plydata #/ np.max(np.abs(plydata))
+            except:
+              print(f"{c}_{i} not found but I think It's not important")
 
     return data, np.arange(0, n * n_cands) // n_cands
 
