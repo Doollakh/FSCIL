@@ -139,28 +139,35 @@ class PointNetfeat(nn.Module):
         else:
             x = x.view(-1, 1024, 1).repeat(1, 1, n_pts)
             features = torch.cat([x, pointfeat], 1)
-
+        temp = features
         features = F.relu(self.bn4(self.fc1(features)))
         features = F.relu(self.bn5(self.dropout(self.fc2(features))))
-        return features, trans, trans_feat, h
+        return features, trans, trans_feat, h, temp
 
 
 class PointNetCls(nn.Module):
-    def __init__(self, k=2, feature_transform=False, last_fc=False, log_softmax=False, input_transform=False):
+    def __init__(self, k=2, feature_transform=False, last_fc=False, log_softmax=False, input_transform=False, log=True):
         super(PointNetCls, self).__init__()
         self.feature_transform = feature_transform
         self.feat = PointNetfeat(global_feat=True, feature_transform=feature_transform, input_transform=input_transform)
         self.fc3 = nn.Linear(256, k)
         self.last_fc = last_fc
         self.log_softmax = log_softmax
+        self.feature = None
+        self.log = log
 
     def forward(self, x):
-        x, trans, trans_feat, _ = self.feat(x)
+        x, trans, trans_feat, _, _ = self.feat(x)
+        self.feature = x
         if self.last_fc:
             x = self.fc3(x)
         if self.log_softmax:
-            x = F.log_softmax(x, dim=1)
-        return x, trans, trans_feat
+            if self.log:
+                x = F.log_softmax(x, dim=1)
+            else:
+                x = F.softmax(x, dim=1)
+
+        return x, trans, trans_feat 
 
     def copy(self):
         return copy.deepcopy(self)

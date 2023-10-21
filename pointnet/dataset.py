@@ -19,22 +19,27 @@ def read_ply(filename):
     return pc_array
 
 
-def read_candidates(root, n_cands=3):
-    root = os.path.join(root, 'data/cands')
-    classes = ['bed', 'bench', 'bookshelf', 'cup', 'dresser', 'guitar', 'lamp', 'mantel', 'monitor', 'plant', 'radio',
-               'range_hood', 'sink', 'sofa', 'stairs', 'stool', 'table', 'toilet', 'tv_stand', 'xbox', 'bottle',
-               'glass_box', 'night_stand', 'piano', 'vase', 'cone', 'desk', 'door', 'laptop', 'person', 'airplane',
-               'bathtub', 'bowl', 'tent', 'wardrobe']
+def read_candidates(root, n_cands=3, dataset_type='modelnet40'):
+    if dataset_type == 'modelnet40':
+        classes = list(np.load('./misc/class_names.npy'))
+    elif dataset_type == 'scanobjects':
+        classes = ['bag','bin','box','bed','chair','desk','display','door','shelves','table','cabinets','pillow','sink','sofa','toilet']
+    elif dataset_type == 'modelnet40_scanobjects':
+        classes = ['airplane','bathtub','bottle','bowl','car','cone','cup','curtain','flower pot','glass box','guitar','keyboard','lamp','laptop','mantel','night stand','person','piano','plant','radio','range hood','stairs','tent','tv stand','vase','cabinet','chair','desk','display','door','shelf','table','bed','sink','sofa','toilet']
+
     n = len(classes)
-    data = np.zeros(shape=(n * n_cands, 2048, 3))
+    data = np.zeros(shape=(n * n_cands, 1024, 3))
     for j, c in enumerate(classes):
         for i in range(n_cands):
-            filename = f'{root}/{c}_{i}.ply'
-            # read filename.ply to numpy array
-            plydata = read_ply(filename)
-            data[j * n_cands + i, :1024, :] = plydata
+            try:
+              filename = f'{root}/{c}_{i}.ply'
+              # read filename.ply to numpy array
+              plydata = read_ply(filename)
+              data[j * n_cands + i, :1024, :] = plydata #/ np.max(np.abs(plydata))
+            except:
+              print(f"{c}_{i} not found but I think It's not important")
 
-    return data, np.arange(0, n * n_cands) // 3
+    return data, np.arange(0, n * n_cands) // n_cands
 
 
 def get_segmentation_classes(root):
@@ -266,15 +271,29 @@ def load_data(root, partition):
 
 
 class ModelNet40(data.Dataset):
-    def __init__(self, root, num_points, partition='train', few=None, from_candidates=False):
+    def __init__(self, root, num_points, partition='train', few=None, from_candidates=False,n_cands=3,cands_path='/content', aligned = False):
 
         self.memory_candidates = None
         if from_candidates:
-            self.memory_candidates = read_candidates(root)
+            self.memory_candidates = read_candidates(cands_path,n_cands)
 
-        self.data, self.label = load_data(root, partition)
+        if aligned:
+            if partition == 'train':
+                root_data = os.path.join(root, 'modelnet40_aligned','train_data.h5')
+            elif partition == 'test':
+                root_data = os.path.join(root, 'modelnet40_aligned','test_data.h5')
+
+            # Reading aligned data
+            f = h5py.File(root_data)
+            self.data  = f['data'][:].astype('float32')
+            self.label = f['label'][:].astype('int8')
+
+        else:
+            self.data, self.label = load_data(root, partition)
         self.num_points = num_points
         self.partition = partition
+
+        self.data = self.data[:,:self.num_points,:]
 
         self.cat = {}
         with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), '../misc/modelnet_id.txt'), 'r') as f:
@@ -285,19 +304,12 @@ class ModelNet40(data.Dataset):
         self.classes = list(self.cat.keys())
 
         if partition == 'train' and few is not None:
-            order = np.array(
-                [2, 3, 4, 10, 14, 17, 19, 21, 22, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36, 39, 5, 16, 23, 25, 37, 9, 12,
-                 13, 20, 24, 0, 1, 6, 34, 38, 7, 8, 11, 15, 18])
-            o = order[20:]
             ids = []
             c = np.zeros(40)
             for i, j in enumerate(self.label):
-                if j in o:
-                    if c[j] < few:
-                        ids.append(i)
-                        c[j] += 1
-                else:
+                if c[j] < few:
                     ids.append(i)
+                    c[j] += 1
 
             self.data = self.data[ids]
             self.label = self.label[ids]
@@ -317,6 +329,176 @@ class ModelNet40(data.Dataset):
 
         self.classes = [c for i, c in enumerate(self.classes) if i in classes]
         print(self.classes)
+    
+    def normalize(self):
+        temp_data = np.zeros_like(self.data)
+        for idx, sample_data in enumerate(self.data):
+            temp_data[idx,:,0] = sample_data[:,0] / np.max(np.abs(sample_data[:,0]))
+            temp_data[idx,:,1] = sample_data[:,1] / np.max(np.abs(sample_data[:,1]))
+            temp_data[idx,:,2] = sample_data[:,2] / np.max(np.abs(sample_data[:,2]))
+
+        self.data = temp_data
+
+    def set_order(self, order):
+        self.classes = [self.classes[i] for i in order]
+        self.label = self._map_new_class_index(self.label, order).reshape(-1)
+
+    @staticmethod
+    def _map_new_class_index(y, order):
+        """Transforms targets for new class order."""
+        return np.array(list(map(lambda x: np.where(order == x), y)), dtype=np.int64)
+
+    def __getitem__(self, item):
+        pointcloud = self.data[item][:self.num_points]
+        label = self.label[item]
+#        if self.partition == 'train':
+#            pointcloud = translate_pointcloud(pointcloud)
+#            np.random.shuffle(pointcloud)
+        return pointcloud, label
+
+    def __len__(self):
+        return self.data.shape[0]
+
+
+class ScanObjects(data.Dataset):
+    def __init__(self, root, num_points, partition='train', few=None, from_candidates=False,n_cands=3,cands_path='/content'):
+        # Read Candidates
+        self.memory_candidates = None
+        if from_candidates:
+            try:
+                self.memory_candidates = read_candidates(cands_path,n_cands,dataset_type='scanpbjects')
+            except:
+                print('(NOTE)  Loading bests is not completed for this stage!')
+        # Load Scan objects data from h5 file
+        if partition == 'train':
+            root = os.path.join(root, 'scan_objects','training_objectdataset_nobg.h5')
+        elif partition == 'test':
+            root = os.path.join(root, 'scan_objects','test_objectdataset_nobg.h5')
+        f = h5py.File(root)
+
+        self.data  = f['data'][:].astype('float32')
+        self.label = f['label'][:].astype('int8')
+
+        self.num_points = num_points
+        self.partition = partition
+
+        self.classes = ['bag','bin','box','bed','chair','desk','display','door','shelves','table','cabinets','pillow','sink','sofa','toilet']
+
+        if partition == 'train' and few is not None:
+            ids = []
+            c = np.zeros(15)
+            for i, j in enumerate(self.label):
+                if c[j] < few:
+                    ids.append(i)
+                    c[j] += 1
+
+            self.data = self.data[ids]
+            self.label = self.label[ids]
+            print(np.unique(self.label, return_counts=True))
+
+    def filter(self, classes, except_samples=None, cand_ids=None):
+        if except_samples is None:
+            except_samples = []
+        f = [i for i, item in enumerate(self.label) if (item in classes) or (i in except_samples)]
+        self.label = self.label[f]
+        self.data = self.data[f]
+
+        if self.memory_candidates is not None:
+            if cand_ids is not None:
+                self.data = np.append(self.data, self.memory_candidates[0][cand_ids], axis=0)
+                self.label = np.append(self.label, self.memory_candidates[1][cand_ids])
+
+        self.classes = [c for i, c in enumerate(self.classes) if i in classes]
+        print(self.classes)
+    
+    def normalize(self):
+        temp_data = np.zeros_like(self.data)
+        for idx, sample_data in enumerate(self.data):
+            temp_data[idx,:,0] = sample_data[:,0] / np.max(np.abs(sample_data[:,0]))
+            temp_data[idx,:,1] = sample_data[:,1] / np.max(np.abs(sample_data[:,1]))
+            temp_data[idx,:,2] = sample_data[:,2] / np.max(np.abs(sample_data[:,2]))
+
+        self.data = temp_data
+
+    def set_order(self, order):
+        self.classes = [self.classes[i] for i in order]
+        self.label = self._map_new_class_index(self.label, order).reshape(-1)
+
+    @staticmethod
+    def _map_new_class_index(y, order):
+        """Transforms targets for new class order."""
+        return np.array(list(map(lambda x: np.where(order == x), y)), dtype=np.int64)
+
+    def __getitem__(self, item):
+        pointcloud = self.data[item][:self.num_points]
+        label = self.label[item]
+#        if self.partition == 'train':
+#            pointcloud = translate_pointcloud(pointcloud)
+#            np.random.shuffle(pointcloud)
+        return pointcloud, label
+
+    def __len__(self):
+        return self.data.shape[0]
+
+
+class ModelNet40_ScanObjects(data.Dataset):
+    def __init__(self, root, num_points, partition='train', few=None, from_candidates=False,n_cands=3,cands_path='/content'):
+        # Read Candidates
+        self.memory_candidates = None
+        if from_candidates:
+            self.memory_candidates = read_candidates(cands_path,n_cands,dataset_type='modelnet40_scanobjects')
+
+        # Load Scan objects data from h5 file
+        if partition == 'train':
+            root_data = os.path.join(root, 'modelnet_scanobject','train_data.npy')
+            root_label = os.path.join(root, 'modelnet_scanobject','train_label.npy')
+        elif partition == 'test':
+            root_data = os.path.join(root, 'modelnet_scanobject','test_data.npy')
+            root_label = os.path.join(root, 'modelnet_scanobject','test_label.npy')
+
+        self.data  = np.load(root_data)
+        self.label = np.load(root_label)
+
+        self.num_points = num_points
+        self.partition  = partition
+
+        self.classes = ['airplane','bathhub','bottle','bowl','car','cone','cup','curtain','flower pot','glass box','guitar','keyboard','lamp','laptop','mantel','night stand','person','piano','plant','radio','range hood','stairs','tent','tv stand','vase','cabinet','chair','desk','display','door','shelf','table','bed','sink','sofa','toilet']
+
+        if partition == 'train' and few is not None:
+            ids = []
+            c = np.zeros(len(self.classes))
+            for i, j in enumerate(self.label):
+                if c[j] < few:
+                    ids.append(i)
+                    c[j] += 1
+
+            self.data = self.data[ids]
+            self.label = self.label[ids]
+            print(np.unique(self.label, return_counts=True))
+
+    def filter(self, classes, except_samples=None, cand_ids=None):
+        if except_samples is None:
+            except_samples = []
+        f = [i for i, item in enumerate(self.label) if (item in classes) or (i in except_samples)]
+        self.label = self.label[f]
+        self.data = self.data[f]
+
+        if self.memory_candidates is not None:
+            if cand_ids is not None:
+                self.data = np.append(self.data, self.memory_candidates[0][cand_ids], axis=0)
+                self.label = np.append(self.label, self.memory_candidates[1][cand_ids])
+
+        self.classes = [c for i, c in enumerate(self.classes) if i in classes]
+        print(self.classes)
+    
+    def normalize(self):
+        temp_data = np.zeros_like(self.data)
+        for idx, sample_data in enumerate(self.data):
+            temp_data[idx,:,0] = sample_data[:,0] / np.max(np.abs(sample_data[:,0]))
+            temp_data[idx,:,1] = sample_data[:,1] / np.max(np.abs(sample_data[:,1]))
+            temp_data[idx,:,2] = sample_data[:,2] / np.max(np.abs(sample_data[:,2]))
+
+        self.data = temp_data
 
     def set_order(self, order):
         self.classes = [self.classes[i] for i in order]
