@@ -22,7 +22,7 @@ from pointnet.specteral import SpectralClusteringMod
 cos = lambda in1, in2: np.dot(in1, in2) / (np.linalg.norm(in1) * np.linalg.norm(in2))
 
 
-def simple_clustring(dataset, classifier, n_class, classes_name, save_path, stage_id, start_class):
+def simple_clustring(dataset, classifier, n_class, classes_name, save_path, stage_id, start_class, number_of_output):
   dataloader = torch.utils.data.DataLoader(
                   dataset,
                   batch_size=32,
@@ -53,7 +53,7 @@ def simple_clustring(dataset, classifier, n_class, classes_name, save_path, stag
 
       #clustring
       print(f'class {i}:{classes_name[i]}')
-      kmeans = KMeans(n_clusters=5, n_init='auto').fit(cX)
+      kmeans = KMeans(n_clusters=number_of_output, n_init='auto').fit(cX)
       labels_dict[classes_name[i]] = kmeans.labels_
 
       # select groups

@@ -240,7 +240,7 @@ class Learning:
 
             # make samples
             if self.opt.best_type == 'simple':
-                simple_clustring(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class)
+                simple_clustring(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class, self.opt.n_cands)
             elif self.opt.best_type == 'spectral':
                 spectral_clustring_mod(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class)
 
@@ -323,7 +323,7 @@ class Learning:
         if self.opt.KD and self.opt.learning_type == 'bCandidate':
             old_classifire = classifier.copy().cuda()
 
-        optimizer = optim.Adam(classifier.parameters(), lr=0.0001, betas=(0.9, 0.999))
+        optimizer = optim.Adam(classifier.parameters(), lr=self.lr, betas=(0.9, 0.999))
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
         classifier.cuda()
 
@@ -630,6 +630,8 @@ if __name__ == '__main__':
         '--dist_temperature', type=int, default=1, help='distillation temperature')
     parser.add_argument(
         '--dist_factor', type=float, default=0.4, help='distillation factor')
+    parser.add_argument(
+        '--lr', type=float, default=0.001, help='learning rate')
     parser.add_argument('--outf', type=str, default='cls', help='output folder')
     parser.add_argument('--cands_path', type=str, default='cands_path', help='Candidate path')
     parser.add_argument('--name', default='exp', help='save results to project/name')
