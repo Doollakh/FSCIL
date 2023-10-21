@@ -323,7 +323,7 @@ class Learning:
         if self.opt.KD and self.opt.learning_type == 'bCandidate':
             old_classifire = classifier.copy().cuda()
 
-        optimizer = optim.Adam(classifier.parameters(), lr=self.lr, betas=(0.9, 0.999))
+        optimizer = optim.Adam(classifier.parameters(), lr=self.opt.lr, betas=(0.9, 0.999))
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=20, gamma=0.5)
         classifier.cuda()
 
