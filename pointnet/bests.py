@@ -22,7 +22,7 @@ from pointnet.specteral import SpectralClusteringMod
 cos = lambda in1, in2: np.dot(in1, in2) / (np.linalg.norm(in1) * np.linalg.norm(in2))
 
 
-def simple_clustring(dataset, classifier, n_class, classes_name, save_path, stage_id, start_class, number_of_output):
+def simple_clustring(dataset, classifier, n_class, classes_name, save_path, stage_id, start_class, number_of_output, steps):
   dataloader = torch.utils.data.DataLoader(
                   dataset,
                   batch_size=32,
@@ -46,7 +46,7 @@ def simple_clustring(dataset, classifier, n_class, classes_name, save_path, stag
   uniq = np.unique(y, return_counts=True)[1]
   result = {i:[] for i in range(n_class)}
 
-  which_classes = range(start_class) if stage_id == 1 else range(start_class-5,start_class)
+  which_classes = range(start_class) if stage_id == 1 else range(start_class-steps,start_class)
   for i in which_classes:
       w = np.where(y == i)[0]
       cX = X[w]
