@@ -37,7 +37,8 @@ def read_candidates(root, n_cands=3, dataset_type='modelnet40'):
               plydata = read_ply(filename)
               data[j * n_cands + i, :1024, :] = plydata #/ np.max(np.abs(plydata))
             except:
-              print(f"{c}_{i} not found but I think It's not important")
+              pass
+            #   print(f"{c}_{i} not found but I think It's not important")
 
     return data, np.arange(0, n * n_cands) // n_cands
 
