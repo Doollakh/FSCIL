@@ -46,6 +46,10 @@ class Learning:
         self.diff = 0
 
     def start(self):
+        ############
+        if self.opt.best_type == 'disjoint' :
+          self.opt.n_cands += 5
+        #############
 
         _fe = self.opt.learning_type == 'forgetting' \
               or self.opt.learning_type == 'exemplar' \
@@ -240,7 +244,10 @@ class Learning:
 
             # make samples
             if self.opt.best_type == 'simple':
-                simple_clustring(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class, self.opt.n_cands, self.opt.step_num_class)
+                simple_clustring(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class, self.opt.n_cands, self.opt.step_num_class, False)
+            elif self.opt.best_type == 'disjoint':
+                simple_clustring(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class, self.opt.n_cands-5, self.opt.step_num_class, True)
+
             elif self.opt.best_type == 'spectral':
                 spectral_clustring_mod(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class)
 

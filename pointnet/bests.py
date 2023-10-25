@@ -22,7 +22,7 @@ from pointnet.specteral import SpectralClusteringMod
 cos = lambda in1, in2: np.dot(in1, in2) / (np.linalg.norm(in1) * np.linalg.norm(in2))
 
 
-def simple_clustring(dataset, classifier, n_class, classes_name, save_path, stage_id, start_class, number_of_output, steps):
+def simple_clustring(dataset, classifier, n_class, classes_name, save_path, stage_id, start_class, number_of_output, steps, disjoint=False):
   dataloader = torch.utils.data.DataLoader(
                   dataset,
                   batch_size=32,
@@ -71,8 +71,12 @@ def simple_clustring(dataset, classifier, n_class, classes_name, save_path, stag
   # Save samples
   pcd = o3d.geometry.PointCloud()
 
+  # selected sample
+  if disjoint: selected_sample = np.load('/content/drive/MyDrive/data/data/input_sample_5.npy', allow_pickle=True)[0]
+ 
   # Save as best exampler
   for i in which_classes:
+    if disjoint : result[i] += selected_sample[classes_name[i]]
     id_list_of_top = result[i]
     for j in range(len(id_list_of_top)):
       pcd.points = o3d.utility.Vector3dVector(dataset[id_list_of_top[j]][0])
