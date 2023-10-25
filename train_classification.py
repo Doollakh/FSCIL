@@ -418,7 +418,10 @@ class Learning:
                         classifier_    = classifier
                     else:
                         classifier_ = classifier
-                        loss = point_loss(pred, target, trans_feat, self.opt.feature_transform)
+                        if self.opt.loss_type == 'nll_loss':
+                            loss = point_loss(pred, target, trans_feat, self.opt.feature_transform)
+                        else:
+                            loss = point_loss(pred, target)
 
                     loss.backward()
                     optimizer.step()
