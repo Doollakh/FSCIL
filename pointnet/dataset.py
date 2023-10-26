@@ -26,6 +26,8 @@ def read_candidates(root, n_cands=3, dataset_type='modelnet40'):
         classes = ['bag','bin','box','bed','chair','desk','display','door','shelves','table','cabinets','pillow','sink','sofa','toilet']
     elif dataset_type == 'modelnet40_scanobjects':
         classes = ['airplane','bathtub','bottle','bowl','car','cone','cup','curtain','flower pot','glass box','guitar','keyboard','lamp','laptop','mantel','night stand','person','piano','plant','radio','range hood','stairs','tent','tv stand','vase','cabinet','chair','desk','display','door','shelf','table','bed','sink','sofa','toilet']
+    elif dataset_type == 'shapenet':
+        classes = ['airplane', 'bag', 'basket' , 'bathtub' , 'bed' , 'bench', 'birdhouse', 'bookshelf', 'bottle', 'bowl', 'bus', 'cabinet', 'camera', 'can', 'cap', 'car', 'cellphone', 'chair', 'clock', 'dishwasher', 'earphone', 'faucet', 'file', 'guitar', 'helmet', 'jar', 'keyboard', 'knife', 'lamp', 'laptop', 'mailbox', 'microphone', 'microwave', 'monitor', 'motorcycle', 'mug', 'piano', 'pillow', 'pistol', 'pot', 'printer', 'remote_control', 'rifle', 'rocket', 'skateboard', 'sofa', 'speaker', 'stove', 'table', 'telephone', 'tin_can', 'tower', 'train', 'vessel', 'washer']
 
     n = len(classes)
     data = np.zeros(shape=(n * n_cands, 1024, 3))
@@ -464,6 +466,87 @@ class ModelNet40_ScanObjects(data.Dataset):
         self.partition  = partition
 
         self.classes = ['airplane','bathhub','bottle','bowl','car','cone','cup','curtain','flower pot','glass box','guitar','keyboard','lamp','laptop','mantel','night stand','person','piano','plant','radio','range hood','stairs','tent','tv stand','vase','cabinet','chair','desk','display','door','shelf','table','bed','sink','sofa','toilet']
+
+        if partition == 'train' and few is not None:
+            ids = []
+            c = np.zeros(len(self.classes))
+            for i, j in enumerate(self.label):
+                if c[j] < few:
+                    ids.append(i)
+                    c[j] += 1
+
+            self.data = self.data[ids]
+            self.label = self.label[ids]
+            print(np.unique(self.label, return_counts=True))
+
+    def filter(self, classes, except_samples=None, cand_ids=None):
+        if except_samples is None:
+            except_samples = []
+        f = [i for i, item in enumerate(self.label) if (item in classes) or (i in except_samples)]
+        self.label = self.label[f]
+        self.data = self.data[f]
+
+        if self.memory_candidates is not None:
+            if cand_ids is not None:
+                self.data = np.append(self.data, self.memory_candidates[0][cand_ids], axis=0)
+                self.label = np.append(self.label, self.memory_candidates[1][cand_ids])
+
+        self.classes = [c for i, c in enumerate(self.classes) if i in classes]
+        print(self.classes)
+    
+    def normalize(self):
+        temp_data = np.zeros_like(self.data)
+        for idx, sample_data in enumerate(self.data):
+            temp_data[idx,:,0] = sample_data[:,0] / np.max(np.abs(sample_data[:,0]))
+            temp_data[idx,:,1] = sample_data[:,1] / np.max(np.abs(sample_data[:,1]))
+            temp_data[idx,:,2] = sample_data[:,2] / np.max(np.abs(sample_data[:,2]))
+
+        self.data = temp_data
+
+    def set_order(self, order):
+        self.classes = [self.classes[i] for i in order]
+        self.label = self._map_new_class_index(self.label, order).reshape(-1)
+
+    @staticmethod
+    def _map_new_class_index(y, order):
+        """Transforms targets for new class order."""
+        return np.array(list(map(lambda x: np.where(order == x), y)), dtype=np.int64)
+
+    def __getitem__(self, item):
+        pointcloud = self.data[item][:self.num_points]
+        label = self.label[item]
+#        if self.partition == 'train':
+#            pointcloud = translate_pointcloud(pointcloud)
+#            np.random.shuffle(pointcloud)
+        return pointcloud, label
+
+    def __len__(self):
+        return self.data.shape[0]
+
+
+
+class ShapeNet(data.Dataset):
+    def __init__(self, root, num_points, partition='train', few=None, from_candidates=False,n_cands=3,cands_path='/content'):
+        # Read Candidates
+        self.memory_candidates = None
+        if from_candidates:
+            self.memory_candidates = read_candidates(cands_path,n_cands,dataset_type='modelnet40_scanobjects')
+
+        # Load Scan objects data from h5 file
+        if partition == 'train':
+            root_data = os.path.join(root, 'shapenet','train_data.npy')
+            root_label = os.path.join(root, 'shapenet','train_label.npy')
+        elif partition == 'test':
+            root_data = os.path.join(root, 'shapenet','test_data.npy')
+            root_label = os.path.join(root, 'shapenet','test_label.npy')
+
+        self.data  = np.load(root_data, allow_pickle=True)
+        self.label = np.load(root_label, allow_pickle=True)
+
+        self.num_points = num_points
+        self.partition  = partition
+
+        self.classes = ['airplane', 'bag', 'basket' , 'bathtub' , 'bed' , 'bench', 'birdhouse', 'bookshelf', 'bottle', 'bowl', 'bus', 'cabinet', 'camera', 'can', 'cap', 'car', 'cellphone', 'chair', 'clock', 'dishwasher', 'earphone', 'faucet', 'file', 'guitar', 'helmet', 'jar', 'keyboard', 'knife', 'lamp', 'laptop', 'mailbox', 'microphone', 'microwave', 'monitor', 'motorcycle', 'mug', 'piano', 'pillow', 'pistol', 'pot', 'printer', 'remote_control', 'rifle', 'rocket', 'skateboard', 'sofa', 'speaker', 'stove', 'table', 'telephone', 'tin_can', 'tower', 'train', 'vessel', 'washer']
 
         if partition == 'train' and few is not None:
             ids = []

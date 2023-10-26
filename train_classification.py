@@ -21,7 +21,7 @@ from tqdm import tqdm
 import shutil
 
 
-from pointnet.dataset import ModelNetDataset, ModelNet40, ScanObjects, ModelNet40_ScanObjects
+from pointnet.dataset import ModelNetDataset, ModelNet40, ScanObjects, ModelNet40_ScanObjects, ShapeNet
 from pointnet.losses import KnowlegeDistilation, PointNetLoss
 from pointnet.model import PointNetCls, PointNetLwf
 from pointnet.bests import simple_clustring, spectral_clustring, spectral_clustring_mod
@@ -83,6 +83,9 @@ class Learning:
 
         elif self.opt.dataset_type == 'modelnet40_scanobjects':
             self.order = [i for i in range(36)]
+        elif self.opt.dataset_type == 'shapenet':
+            self.order = [i for i in range(55)]
+            self.class_names = ['airplane', 'bag', 'basket' , 'bathtub' , 'bed' , 'bench', 'birdhouse', 'bookshelf', 'bottle', 'bowl', 'bus', 'cabinet', 'camera', 'can', 'cap', 'car', 'cellphone', 'chair', 'clock', 'dishwasher', 'earphone', 'faucet', 'file', 'guitar', 'helmet', 'jar', 'keyboard', 'knife', 'lamp', 'laptop', 'mailbox', 'microphone', 'microwave', 'monitor', 'motorcycle', 'mug', 'piano', 'pillow', 'pistol', 'pot', 'printer', 'remote_control', 'rifle', 'rocket', 'skateboard', 'sofa', 'speaker', 'stove', 'table', 'telephone', 'tin_can', 'tower', 'train', 'vessel', 'washer']
 
         log_class.data['config']['order'] = self.opt.order
 
@@ -193,6 +196,16 @@ class Learning:
 
             self.num_classes = len(dataset.classes)
 
+        elif self.opt.dataset_type == 'shapenet':
+            print('(Info) Reading shapenet dataset')
+            few = self.opt.few_shots if self.opt.f else None
+            dataset = ShapeNet(root=self.opt.dataset, partition='train', num_points=self.opt.num_points, few=few
+                                     , from_candidates=self.opt.learning_type == 'bCandidate',n_cands=self.opt.n_cands,cands_path=self.opt.cands_path)
+
+            test_dataset = ShapeNet(root=self.opt.dataset, partition='test', num_points=self.opt.num_points,few=None)
+
+            self.num_classes = len(dataset.classes)
+
         else:
             exit('wrong dataset type')
 
@@ -229,6 +242,8 @@ class Learning:
                 temp_dataset = ModelNet40(root=self.opt.dataset, partition='train', num_points=self.opt.num_points,aligned = self.opt.aligned)
             elif self.opt.dataset_type == 'modelnet40_scanobjects':
                 temp_dataset = ModelNet40_ScanObjects(root=self.opt.dataset, partition='train', num_points=self.opt.num_points)
+            elif self.opt.dataset_type == 'shapenet':
+                temp_dataset = ShapeNet(root=self.opt.dataset, partition='train', num_points=self.opt.num_points)
             temp_dataset.set_order(self.order)
 
             # saving folder
@@ -247,7 +262,6 @@ class Learning:
                 simple_clustring(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class, self.opt.n_cands, self.opt.step_num_class, False)
             elif self.opt.best_type == 'disjoint':
                 simple_clustring(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class, self.opt.n_cands-5, self.opt.step_num_class, True)
-
             elif self.opt.best_type == 'spectral':
                 spectral_clustring_mod(temp_dataset, temp_classifier, len(self.order), self.class_names, best_save_path, stage_id, prv_n_class)
 
