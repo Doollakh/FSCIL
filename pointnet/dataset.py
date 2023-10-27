@@ -530,7 +530,7 @@ class ShapeNet(data.Dataset):
         # Read Candidates
         self.memory_candidates = None
         if from_candidates:
-            self.memory_candidates = read_candidates(cands_path,n_cands,dataset_type='modelnet40_scanobjects')
+            self.memory_candidates = read_candidates(cands_path,n_cands,dataset_type='shapenet')
 
         # Load Scan objects data from h5 file
         if partition == 'train':
