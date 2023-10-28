@@ -481,8 +481,8 @@ class Learning:
             np.save(f'{self.save_dir}/results/accuracy_cls{self.n_class}_{self.opt.learning_type}.npy', test_acc)
             np.save(f'{self.save_dir}/results/loss_cls{self.n_class}_{self.opt.learning_type}.npy', test_loss)
 
-        torch.save(classifier_.state_dict(),
-                '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
+        torch.save(classifier_.feat.state_dict(),
+                    '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
 
 
         if _fe:
