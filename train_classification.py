@@ -204,6 +204,8 @@ class Learning:
 
             test_dataset = ShapeNet(root=self.opt.dataset, partition='test', num_points=self.opt.num_points,few=None)
 
+            dataset.set_order(self.order)
+            test_dataset.set_order(self.order)
             self.num_classes = len(dataset.classes)
 
         else:
