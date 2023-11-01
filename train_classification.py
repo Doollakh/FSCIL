@@ -245,6 +245,8 @@ class Learning:
             elif self.opt.dataset_type == 'modelnet40_scanobjects':
                 temp_dataset = ModelNet40_ScanObjects(root=self.opt.dataset, partition='train', num_points=self.opt.num_points)
             elif self.opt.dataset_type == 'shapenet':
+                if stage_id == 8:
+                    self.opt.step_num_class = 5
                 temp_dataset = ShapeNet(root=self.opt.dataset, partition='train', num_points=self.opt.num_points)
             temp_dataset.set_order(self.order)
 
@@ -269,8 +271,7 @@ class Learning:
 
 
             print("\n")
-        #########################################################
-        
+        #########################################################            
 
 
         dataset, test_dataset = self.select_dataset(stage_id)
