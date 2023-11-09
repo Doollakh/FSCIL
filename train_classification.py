@@ -565,6 +565,8 @@ class Learning:
           cm_display.plot()
           plt.savefig(f'./results/CM_{n_class}.png', dpi=400)
 
+        '''
+        
         # Data to save as log
         each_class_total = np.sum(confusion_matrix, axis=1) # total data in each class
         each_class_true  = np.diagonal(confusion_matrix)    # total true data in eah class
@@ -587,6 +589,8 @@ class Learning:
                                           },
                                           'accuracy_per_class' : accuracy_per_class
                                         })
+        
+        '''
         return total_loss / float(total_testset), total_correct / float(total_testset)
 
     def compute_best_samples(self, classifier):
