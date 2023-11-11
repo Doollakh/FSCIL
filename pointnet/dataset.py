@@ -534,11 +534,11 @@ class ShapeNet(data.Dataset):
 
         # Load Scan objects data from h5 file
         if partition == 'train':
-            root_data = os.path.join(root, 'shapenet','train_data.npy')
-            root_label = os.path.join(root, 'shapenet','train_label.npy')
+            root_data = os.path.join(root, 'shapenet','train_data_2.npy')
+            root_label = os.path.join(root, 'shapenet','train_label_2.npy')
         elif partition == 'test':
-            root_data = os.path.join(root, 'shapenet','test_data.npy')
-            root_label = os.path.join(root, 'shapenet','test_label.npy')
+            root_data = os.path.join(root, 'shapenet','test_data_2.npy')
+            root_label = os.path.join(root, 'shapenet','test_label_2.npy')
 
         self.data  = np.load(root_data, allow_pickle=True)
         self.label = np.load(root_label, allow_pickle=True)
