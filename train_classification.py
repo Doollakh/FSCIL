@@ -258,7 +258,7 @@ class Learning:
               shutil.rmtree(best_save_path)
 
             if not os.path.exists(best_save_path):
-                shutil.copytree(self.opt.cands_path, best_save_path)
+                os.mkdir(best_save_path)
             
             self.opt.cands_path = best_save_path
 
