@@ -488,6 +488,8 @@ class Learning:
 
         torch.save(classifier_.feat.state_dict(),
                     '%s/cls_model_%s_%d.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
+        torch.save(classifier_.state_dict(),
+                    '%s/cls_model_%s_%d_with_head.pth' % (self.save_dir, self.opt.learning_type, self.n_class))
 
 
         if _fe:
